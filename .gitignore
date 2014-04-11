@@ -5,3 +5,5 @@ TTYLOG
 TTYLOG.*
 TRACE
 DISK
+cscope.*
+tags
