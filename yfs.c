@@ -10,11 +10,11 @@ void printInode(int level, char *where, struct inode *inode)
 	TracePrintf(level, "[Testing @ %s]: inode(type: %d, nlink: %d, size: %d, indirect: %d)\n", where, inode ->type, inode ->nlink, inode->size, inode->indirect);
 	
 	//Print direct block
-	TracePrintf(level, "Direct block: ");
+	TracePrintf(level, "Direct block: \n");
 	int i;
 	for(i=0; i<NUM_DIRECT; i++)
 	{
-		  TracePrintf(level, "%d ", inode ->direct[i]);
+		  TracePrintf(level, "%d\n", inode ->direct[i]);
 	}
 	TracePrintf(level, "\n");
 
@@ -29,11 +29,13 @@ void printInode(int level, char *where, struct inode *inode)
 		{
 			TracePrintf(0, "[Error @ %s @ printInode]: Read indirect block %d unsuccessfully\n", where, inode ->indirect);
 		}
-
-		TracePrintf(level, "Indirect block: ");
-		for(i=0; i<sizeof(char) * SECTORSIZE / sizeof(int); i++)
+		else
 		{
-			TracePrintf(level, "%d ", (int *)(buf+i));
+			TracePrintf(level, "Indirect block: \n");
+			for(i=0; i<sizeof(char) * SECTORSIZE / sizeof(int); i++)
+			{
+				TracePrintf(level, "%d\n", (int *)buf+i);
+			}
 		}
 	}
 
@@ -52,6 +54,7 @@ void printDisk(int level, char *where)
 	if( readIndirectBlockStatus != 0)
 	{
 		TracePrintf(0, "[Error @ %s @ printDisk]: Read indirect block %d unsuccessfully\n", where, 1);
+		return;
 	}
 
 	//Print fs_header
@@ -59,12 +62,12 @@ void printDisk(int level, char *where)
 	TracePrintf(level, "fs_header: num_blocks(%d), num_inodes(%d)\n", fsHeader ->num_blocks, fsHeader ->num_inodes);
 
 	//Print inodesi in blcok 1
-	int numOfBlocksContainingInodes = (fsHeader ->num_blocks + 1)/(BLOCKSIZE/INODESIZE);
+	int numOfBlocksContainingInodes = ((fsHeader ->num_inodes) + 1)/(BLOCKSIZE/INODESIZE);
 	TracePrintf(level, "inodes in %d blocks:\n", numOfBlocksContainingInodes);
 	int i;
 	for(i=1; i<BLOCKSIZE/INODESIZE -1; i++)
 	{
-		  printInode(level, "", (struct inode *)(buf+i));
+		  printInode(level, "", (struct inode *)buf+i);
 	}
 
 	//Print inodes not in block 1
@@ -76,12 +79,13 @@ void printDisk(int level, char *where)
 		{
 			TracePrintf(0, "[Error @ %s @ printDisk]: Read indirect block %d unsuccessfully\n", where, blockIndex);
 		}
-		
-		for(i=0; i<BLOCKSIZE/INODESIZE -1; i++)
+		else
 		{
-			  printInode(level, "", (struct inode *)(buf+i));
+			for(i=0; i<BLOCKSIZE/INODESIZE -1; i++)
+			{
+				  printInode(level, "", (struct inode *)buf+i);
+			}
 		}
-
 	}
 
 	TracePrintf(level, "\n");
