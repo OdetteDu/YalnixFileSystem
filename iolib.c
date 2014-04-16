@@ -4,7 +4,7 @@
 #include <comp421/iolib.h>
 #include <comp421/filesystem.h>
 #include <comp421/yalnix.h>
-
+#include <stdint.h>
 #include "global.h"
 
 extern int Open(char *pathname)
@@ -210,7 +210,7 @@ extern int Stat(char *pathname, struct Stat *statbuf)
 	int *data = malloc(sizeof(int) * 2);
 	data[0] = statbuf -> inum;
 	data[1] = statbuf -> nlink;
-	msg.buf = *data;
+	msg.buf = (*data);
 
 	int send = Send((void *)&msg, FILE_SERVER);
 	if( send != 0 )

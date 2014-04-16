@@ -33,4 +33,13 @@ struct Message
 	char *buf; //newname
 };
 
+typedef struct linkedIntList{
+	int isFree;
+	struct linkedIntList *next;
+	int index; 
+}LinkedIntList;
+
+LinkedIntList* get(int index, LinkedIntList* listHead);
+void insertIntoLinkedIntList(LinkedIntList* node ,  LinkedIntList* listHead ,  LinkedIntList* listTail);
+
 #endif

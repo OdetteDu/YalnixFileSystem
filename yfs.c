@@ -3,8 +3,35 @@
 #include <comp421/yalnix.h>
 #include <comp421/filesystem.h>
 #include <comp421/iolib.h>
-
 #include "global.h"
+
+
+/* Fucntion prototypes */
+void insertIntoLinkedIntList(LinkedIntList* node, LinkedIntList* head, LinkedIntList* tail){
+        if(head == 0){ //change to NULL later
+                head = node;
+                node->next = NULL;
+                tail = node;
+        }else if( head == tail){
+                tail = node;
+                head->next = tail;
+                node->next = NULL;
+        }else{//length >= 3
+                tail->next = node;
+                tail = node;
+        }
+}
+
+LinkedIntList* get(int index, LinkedIntList* head){
+        LinkedIntList* toReturn = head;
+        while(toReturn!=NULL){
+                if(toReturn->index == index){
+                        return toReturn;
+                }
+                toReturn = toReturn->next;
+        }
+        return NULL;
+}
 
 void printInode( int level, char *where, struct inode *inode )
 {
@@ -95,7 +122,7 @@ void printDisk( int level, char *where )
 }
 
 //mark used blocks used by inode
-int markUsedBlocks( struct inode *inode, int *isBlockFree )
+int markUsedBlocks( struct inode *inode, LinkedIntList *isBlockFreeHead )
 {
 	int level = 1100;
 	char *where = "yfs.c @ markUserBlocks";
@@ -116,7 +143,7 @@ int markUsedBlocks( struct inode *inode, int *isBlockFree )
 		for( i = 0; i < NUM_DIRECT; i++ )
 		{
 			TracePrintf( level, "%d\n", inode->direct[i] );
-			isBlockFree[inode->direct[i]] = USED;
+			get(inode->direct[i], isBlockFreeHead)->isFree= USED;
 		}
 		TracePrintf( level, "\n" );
 
@@ -138,7 +165,7 @@ int markUsedBlocks( struct inode *inode, int *isBlockFree )
 			{
 				int blockIndex = *((int *) buf + i);
 				TracePrintf( level, "%d\n", blockIndex );
-				isBlockFree[blockIndex] = USED;
+				get(blockIndex, isBlockFreeHead)->isFree= USED;
 			}
 			TracePrintf( level, "\n" );
 
@@ -146,6 +173,7 @@ int markUsedBlocks( struct inode *inode, int *isBlockFree )
 		return USED;
 	}
 }
+
 
 void calculateFreeBlocksAndInodes()
 {
@@ -168,21 +196,32 @@ void calculateFreeBlocksAndInodes()
 	struct fs_header *fsHeader = (struct fs_header *) buf;
 	int numInodes = fsHeader->num_inodes;
 	int numBlocks = fsHeader->num_blocks; 
-	int *isInodeFree = malloc( sizeof(int) * numInodes );
+/*	int *isInodeFree = malloc( sizeof(int) * numInodes );
 	int *isBlockFree = malloc( sizeof(int) * numBlocks );
+*/
+	LinkedIntList* isInodeFreeHead = NULL;
+	LinkedIntList* isBlockFreeHead = NULL;
+	LinkedIntList* isInodeFreeTail = NULL; //= malloc( sizeof(LinkedIntList));
+	LinkedIntList* isBlockFreeTail = NULL; // = malloc( sizeof(LinkedIntList));
 
 	int i;
 	TracePrintf( level, "[Testing @ %s]: Free Inodes %d:\n", where, numInodes);
 	for( i = 0; i < numInodes; i++ )
 	{
-		isInodeFree[i] = FREE;
+		LinkedIntList* isInodeFree = malloc(sizeof(LinkedIntList));
+		isInodeFree->index = i;
+		isInodeFree->isFree = FREE;
+		insertIntoLinkedIntList(isInodeFree, isInodeFreeHead, isInodeFreeTail);
 	}
 	TracePrintf( level, "\n" );
 
 	TracePrintf( level, "[Testing @ %s]: Free Blocks %d:\n", where, numBlocks);
 	for( i = 0; i < numBlocks; i++ )
 	{
-		isBlockFree[i] = FREE;
+		LinkedIntList* isBlockFree = malloc(sizeof(LinkedIntList));
+		isBlockFree->index = i;
+		isBlockFree->isFree = FREE;
+		insertIntoLinkedIntList(isBlockFree, isBlockFreeHead, isBlockFreeTail);
 	}
 	TracePrintf( level, "\n" );
 
@@ -192,13 +231,13 @@ void calculateFreeBlocksAndInodes()
 	int inodeIndex = 0;
 	for( i = 1; i < BLOCKSIZE / INODESIZE; i++ )
 	{
-		int inodeFree = markUsedBlocks( (struct inode *) buf + i, isBlockFree );
+		int inodeFree = markUsedBlocks( (struct inode *) buf + i, isBlockFreeHead );
 		if( inodeFree < 0 )
 		{
 			TracePrintf( 0, "[Error @ %s ]: Read indirect block %d unsuccessfully\n", where, inodeIndex );
 		}
 
-		isInodeFree[inodeIndex] = inodeFree;
+		get(inodeIndex, isInodeFreeHead)->isFree = inodeFree;
 		TracePrintf( level, "[Testing @ %s]: inode %d 's status is %d\n", where, inodeIndex, inodeFree );
 		inodeIndex++;
 	}
@@ -217,12 +256,12 @@ void calculateFreeBlocksAndInodes()
 		{
 			for( i = 0; i < BLOCKSIZE / INODESIZE; i++ )
 			{
-				int inodeFree = markUsedBlocks( (struct inode *) buf + i, isBlockFree );
+				int inodeFree = markUsedBlocks( (struct inode *) buf + i, isBlockFreeHead );
 				if( inodeFree < 0 )
 				{
 					TracePrintf( 0, "[Error @ %s ]: Read indirect block %d unsuccessfully\n", where, inodeIndex );
 				}
-				isInodeFree[inodeIndex] = inodeFree;
+				get(inodeIndex, isInodeFreeHead)->isFree = inodeFree;
 				TracePrintf( level, "[Testing @ %s]: inode %d 's status is %d\n", where, inodeIndex, inodeFree );
 				inodeIndex++;
 			}
@@ -234,14 +273,14 @@ void calculateFreeBlocksAndInodes()
 	TracePrintf( level, "[Testing @ %s]: Free Inodes %d:\n", where, numInodes);
 	for( i = 0; i < numInodes; i++ )
 	{
-		TracePrintf( level, "%d:%d\n", i, isInodeFree[i] );
+		TracePrintf( level, "%d:%d\n", i, get(i,isInodeFreeHead)->isFree );
 	}
 	TracePrintf( level, "\n" );
 
 	TracePrintf( level, "[Testing @ %s]: Free Blocks %d:\n", where, numBlocks);
 	for( i = 0; i < numBlocks; i++ )
 	{
-		TracePrintf( level, "%d:%d\n", i, isBlockFree[i] );
+		TracePrintf( level, "%d:%d\n", i, get(i,isBlockFreeHead)->isFree );
 	}
 	TracePrintf( level, "\n" );
 }
