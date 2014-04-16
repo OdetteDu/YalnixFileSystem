@@ -25,8 +25,7 @@
 
 struct Message
 {
-	short messageType;
-	short fileType;
+	int messageType;
 	int fd; //inum
 	int len; //offset or nlink
 	int size; //whence
