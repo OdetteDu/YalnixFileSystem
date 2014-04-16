@@ -256,6 +256,20 @@ int main( int argc, char **argv )
 
 //	printDisk( 1500, "main.c" );
 	calculateFreeBlocksAndInodes();
+
+	Fork();
+	Exec(argv[1], argv+1);
+
+//	while(1)
+//	{
+//		char *msg = malloc(sizeof(char) * 32);
+//		int receive = Receive(msg);
+//		if(receive != 0)
+//		{
+//			TracePrintf(0, "[Error @ yfs.c @ main]: Receive Message Failure\n");
+//			return ERROR;
+//		}
+//	}
 	
 	return 0;
 }
