@@ -28,8 +28,8 @@ struct Message
 	short messageType;
 	short fileType;
 	int fd; //inum
-	int len; //size or offset
-	int nlink;
+	int len; //offset or nlink
+	int size; //whence
 	char *pathname; //oldname
 	char *buf; //newname
 };

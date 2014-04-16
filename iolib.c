@@ -52,7 +52,7 @@ extern int SymLink(char *oldname, char *newname)
 	return 0;	
 }
 
-extern int ReadLink(char *pathname, char *buf, int len)
+extern int ReadLink(char *pathname, char *buf, int size)
 {
 	return 0;	
 }
