@@ -3,6 +3,8 @@
 #include <comp421/iolib.h>
 #include <comp421/filesystem.h>
 
+#include "global.h"
+
 extern int Open(char *pathname)
 {
 	return 0;	

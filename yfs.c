@@ -4,6 +4,8 @@
 #include <comp421/filesystem.h>
 #include <comp421/iolib.h>
 
+#include "global.h"
+
 void printInode( int level, char *where, struct inode *inode )
 {
 	//Print basic information about an inode
@@ -91,9 +93,6 @@ void printDisk( int level, char *where )
 
 	TracePrintf( level, "\n" );
 }
-
-#define FREE 0
-#define USED 1
 
 //mark used blocks used by inode
 int markUsedBlocks( struct inode *inode, int *isBlockFree )
@@ -257,6 +256,6 @@ int main( int argc, char **argv )
 
 //	printDisk( 1500, "main.c" );
 	calculateFreeBlocksAndInodes();
-
+	
 	return 0;
 }
