@@ -137,7 +137,7 @@ int markUsedBlocks( struct inode *inode, int *isBlockFree )
 			TracePrintf( level, "Indirect block: \n" );
 			for( i = 0; i < sizeof(char) * SECTORSIZE / sizeof(int); i++ )
 			{
-				int blockIndex = (int *) buf + i;
+				int blockIndex = *((int *) buf + i);
 				TracePrintf( level, "%d\n", blockIndex );
 				isBlockFree[blockIndex] = USED;
 			}
@@ -167,25 +167,29 @@ void calculateFreeBlocksAndInodes()
 
 	//Get total number of inodes and blocks from fs_header
 	struct fs_header *fsHeader = (struct fs_header *) buf;
-	int *isInodeFree = malloc( sizeof(int) * fsHeader->num_inodes );
-	int *isBlockFree = malloc( sizeof(int) * fsHeader->num_blocks );
+	int numInodes = fsHeader->num_inodes;
+	int numBlocks = fsHeader->num_blocks; 
+	int *isInodeFree = malloc( sizeof(int) * numInodes );
+	int *isBlockFree = malloc( sizeof(int) * numBlocks );
 
 	//Print inodes in blcok 1
 	int numOfBlocksContainingInodes = ((fsHeader->num_inodes) + 1) / (BLOCKSIZE / INODESIZE);
-	TracePrintf( level, "inodes in %d blocks:\n", numOfBlocksContainingInodes );
+	TracePrintf( level, "BLOCKSIZE/INODESIZE: %d, inodes in %d blocks:\n", BLOCKSIZE/INODESIZE, numOfBlocksContainingInodes );
 	int inodeIndex = 0;
 	int i;
-	for( i = 1; i < BLOCKSIZE / INODESIZE - 1; i++ )
+	for( i = 1; i < BLOCKSIZE / INODESIZE; i++ )
 	{
 		int inodeFree = markUsedBlocks( (struct inode *) buf + i, isBlockFree );
 		if( inodeFree < 0 )
 		{
 			TracePrintf( 0, "[Error @ %s ]: Read indirect block %d unsuccessfully\n", where, inodeIndex );
 		}
+
 		isInodeFree[inodeIndex] = inodeFree;
 		TracePrintf( level, "[Testing @ %s]: inode %d 's status is %d\n", where, inodeIndex, inodeFree );
 		inodeIndex++;
 	}
+	TracePrintf( level, "\n" );
 
 	//Print inodes not in block 1
 	int blockIndex;
@@ -198,7 +202,7 @@ void calculateFreeBlocksAndInodes()
 		}
 		else
 		{
-			for( i = 0; i < BLOCKSIZE / INODESIZE - 1; i++ )
+			for( i = 0; i < BLOCKSIZE / INODESIZE; i++ )
 			{
 				int inodeFree = markUsedBlocks( (struct inode *) buf + i, isBlockFree );
 				if( inodeFree < 0 )
@@ -214,15 +218,15 @@ void calculateFreeBlocksAndInodes()
 		}
 	}
 
-	TracePrintf( level, "[Testing @ %s]: Free Inodes:\n", where );
-	for( i = 0; i < fsHeader->num_inodes; i++ )
+	TracePrintf( level, "[Testing @ %s]: Free Inodes %d:\n", where, numInodes);
+	for( i = 0; i < numInodes; i++ )
 	{
 		TracePrintf( level, "%d:%d\n", i, isInodeFree[i] );
 	}
 	TracePrintf( level, "\n" );
 
-	TracePrintf( level, "[Testing @ %s]: Free Blocks:\n", where );
-	for( i = 0; i < fsHeader->num_blocks; i++ )
+	TracePrintf( level, "[Testing @ %s]: Free Blocks %d:\n", where, numBlocks);
+	for( i = 0; i < numBlocks; i++ )
 	{
 		TracePrintf( level, "%d:%d\n", i, isBlockFree[i] );
 	}
@@ -237,7 +241,8 @@ int main( int argc, char **argv )
 		TracePrintf( 0, "[Error @ yfs.main]: unsuccessfully register the YFS as the FILE_SERVER.\n" );
 	}
 
-	printDisk( 1500, "main.c" );
+//	printDisk( 1500, "main.c" );
+	calculateFreeBlocksAndInodes();
 
 	return 0;
 }
