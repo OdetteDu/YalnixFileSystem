@@ -172,11 +172,25 @@ void calculateFreeBlocksAndInodes()
 	int *isInodeFree = malloc( sizeof(int) * numInodes );
 	int *isBlockFree = malloc( sizeof(int) * numBlocks );
 
+	int i;
+	TracePrintf( level, "[Testing @ %s]: Free Inodes %d:\n", where, numInodes);
+	for( i = 0; i < numInodes; i++ )
+	{
+		isInodeFree[i] = FREE;
+	}
+	TracePrintf( level, "\n" );
+
+	TracePrintf( level, "[Testing @ %s]: Free Blocks %d:\n", where, numBlocks);
+	for( i = 0; i < numBlocks; i++ )
+	{
+		isBlockFree[i] = FREE;
+	}
+	TracePrintf( level, "\n" );
+
 	//Print inodes in blcok 1
 	int numOfBlocksContainingInodes = ((fsHeader->num_inodes) + 1) / (BLOCKSIZE / INODESIZE);
 	TracePrintf( level, "BLOCKSIZE/INODESIZE: %d, inodes in %d blocks:\n", BLOCKSIZE/INODESIZE, numOfBlocksContainingInodes );
 	int inodeIndex = 0;
-	int i;
 	for( i = 1; i < BLOCKSIZE / INODESIZE; i++ )
 	{
 		int inodeFree = markUsedBlocks( (struct inode *) buf + i, isBlockFree );
