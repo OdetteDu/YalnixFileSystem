@@ -5,6 +5,7 @@
 int main(int argc, char **argv)
 {
 	printf("Hello, World!\n");
-	Sync();
+	Open("/Test");
+	
 	return 0;
 }

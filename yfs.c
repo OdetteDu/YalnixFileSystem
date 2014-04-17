@@ -246,7 +246,7 @@ void calculateFreeBlocksAndInodes()
 	TracePrintf( level, "\n" );
 }
 
-void addressMessage(struct Message *msg)
+void addressMessage(int pid, struct Message *msg)
 {
 	int type = msg -> messageType;
 	TracePrintf(500, "[Testing @ yfs.c @ receiveMessage]: receive message typed %d\n", type);
@@ -272,6 +272,11 @@ void addressMessage(struct Message *msg)
 		//get pathname and len
 		len = msg -> len;
 		pathname = malloc(sizeof(char) * len);
+		int copyFrom = CopyFrom(pid, pathname, msg -> pathname, len);
+		if(copyFrom != 0)
+		{
+			TracePrintf(0, "[Error @ yfs.c @ addressMessage]: copy pathname from pid %d failure\n", pid);
+		}
 	}
 
 	if( type == READ ||
@@ -283,6 +288,11 @@ void addressMessage(struct Message *msg)
 		//get buf and size
 		size = msg -> size;
 		buf = malloc(sizeof(char) * size);
+		int copyFrom = CopyFrom(pid, buf, msg -> buf, size);
+		if(copyFrom != 0)
+		{
+			TracePrintf(0, "[Error @ yfs.c @ addressMessage]: copy buf from pid %d failure\n", pid);
+		}
 	}
 
 	if( type == READ || type == WRITE )
@@ -337,7 +347,6 @@ void addressMessage(struct Message *msg)
 			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message SHUTDOWN: type(%d)\n", type);
 			break;
 	}
-		
 }
 
 int main( int argc, char **argv )
@@ -369,7 +378,7 @@ int main( int argc, char **argv )
 			}
 			
 			TracePrintf(500, "Sender: %d\n", sender);
-			addressMessage(msg);
+			addressMessage(sender, msg);
 			Reply(msg, sender);
 		}
 	}
