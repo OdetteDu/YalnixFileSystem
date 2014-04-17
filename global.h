@@ -26,9 +26,9 @@
 struct Message
 {
 	int messageType;
-	int fd; //inum
-	int len; //offset or nlink
-	int size; //whence
+	int inode;
+	int len; //currentPos
+	int size;
 	char *pathname; //oldname
 	char *buf; //newname
 };

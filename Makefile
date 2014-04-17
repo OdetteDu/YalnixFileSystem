@@ -35,8 +35,8 @@ ALL = yfs iolib.a
 #	YFS server, and YFS_SRCS should  be a list of the corresponding
 #	source files that make up your serever.
 #
-YFS_OBJS = yfs.o iolib.o 
-YFS_SRCS = yfs.c iolib.c 
+YFS_OBJS = yfs.o  
+YFS_SRCS = yfs.c  
 
 #
 #	You must also modify the IOLIB_OBJS and IOLIB_SRCS definitions

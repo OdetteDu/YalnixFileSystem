@@ -246,6 +246,12 @@ void calculateFreeBlocksAndInodes()
 	TracePrintf( level, "\n" );
 }
 
+void addressMessage(struct Message *msg)
+{
+	int type = msg -> messageType;
+	TracePrintf(500, "[Testing @ yfs.c @ receiveMessage]: receive message: type(%d)\n", type);
+}
+
 int main( int argc, char **argv )
 {
 	int registerStatus = Register( FILE_SERVER );
@@ -257,19 +263,27 @@ int main( int argc, char **argv )
 //	printDisk( 1500, "main.c" );
 	calculateFreeBlocksAndInodes();
 
-	Fork();
-	Exec(argv[1], argv+1);
+	int pid = Fork();
+	if(pid == 0)
+	{
+		Exec(argv[1], argv+1);
+	}
+	else
+	{
+		while(1)
+		{
+//			struct Message *msg = malloc(sizeof(struct Message));
+			char *msg = malloc(sizeof(char)*32);
+			int receive = Receive(msg);
+			if(receive != 0)
+			{
+				TracePrintf(0, "[Error @ yfs.c @ main]: Receive Message Failure\n");
+				return ERROR;
+			}
 
-//	while(1)
-//	{
-//		char *msg = malloc(sizeof(char) * 32);
-//		int receive = Receive(msg);
-//		if(receive != 0)
-//		{
-//			TracePrintf(0, "[Error @ yfs.c @ main]: Receive Message Failure\n");
-//			return ERROR;
-//		}
-//	}
+//			addressMessage(msg);
+		}
+	}
 	
 	return 0;
 }
