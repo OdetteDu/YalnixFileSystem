@@ -35,13 +35,12 @@ int isFileDescriptorLegal(int fd)
 
 extern int Open(char *pathname)
 {
-	struct Message *msg;
-	msg = malloc(sizeof(struct Message));
-	msg->messageType = OPEN;
-	msg->pathname = pathname;
-	msg->len = strlen(pathname); 
+	struct Message msg;
+	msg.messageType = OPEN;
+	msg.pathname = pathname;
+	msg.len = strlen(pathname); 
 
-	int send = Send((void *)msg, FILE_SERVER);
+	int send = Send((void *)&msg, FILE_SERVER);
 	if( send != 0 )
 	{
 		TracePrintf(0, "[Error @ iolib.h @ Open]: The send status is Error.\n");
@@ -232,7 +231,7 @@ extern int Stat(char *pathname, struct Stat *statbuf)
 	return 0;	
 }
 
-extern int Sync(void)
+extern int Sync()
 {
 	struct Message msg;
 	msg.messageType = SYNC;
@@ -245,16 +244,18 @@ extern int Sync(void)
 	return 0;	
 }
 
-extern int Shutdown(void)
+extern int Shutdown()
 {
 	struct Message msg;
 	msg.messageType = SHUTDOWN;
 
-	int send = Send((void *)&msg, FILE_SERVER);
+	int send = Send(&msg, FILE_SERVER);
 	if( send != 0 )
 	{
 		TracePrintf(0, "[Error @ iolib.h @ Shutdown]: The send status is Error.\n");
 	}
+
+	TracePrintf(500, "[Testing @ iolib.h @ Shutdown]: Reply: messageType(%d)\n", msg.messageType);
 	return 0;	
 }
 

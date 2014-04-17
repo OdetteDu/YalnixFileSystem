@@ -250,6 +250,7 @@ void addressMessage(struct Message *msg)
 {
 	int type = msg -> messageType;
 	TracePrintf(500, "[Testing @ yfs.c @ receiveMessage]: receive message: type(%d)\n", type);
+	msg -> messageType = 0;
 }
 
 int main( int argc, char **argv )
@@ -272,16 +273,17 @@ int main( int argc, char **argv )
 	{
 		while(1)
 		{
-//			struct Message *msg = malloc(sizeof(struct Message));
-			char *msg = malloc(sizeof(char)*32);
-			int receive = Receive(msg);
-			if(receive != 0)
+			struct Message *msg = malloc(sizeof(struct Message));
+			int sender = Receive(msg);
+			if(sender == ERROR)
 			{
 				TracePrintf(0, "[Error @ yfs.c @ main]: Receive Message Failure\n");
 				return ERROR;
 			}
-
-//			addressMessage(msg);
+			
+			TracePrintf(500, "Sender: %d\n", sender);
+			addressMessage(msg);
+			Reply(msg, sender);
 		}
 	}
 	
