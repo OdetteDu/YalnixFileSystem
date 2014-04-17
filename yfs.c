@@ -250,7 +250,87 @@ void addressMessage(struct Message *msg)
 {
 	int type = msg -> messageType;
 	TracePrintf(500, "[Testing @ yfs.c @ receiveMessage]: receive message: type(%d)\n", type);
-	msg -> messageType = 0;
+
+	int len;
+	char *pathname;
+	int size;
+	char *buf;
+	int inode;
+	int currentPos;
+
+	if( type == OPEN || 
+		type == CREATE ||
+		type == UNLINK || 
+		type == MKDIR ||
+		type == RMDIR ||
+		type == CHDIR ||
+		type == STAT ||
+		type == READLINK ||
+		type == LINK ||
+		type == SYMLINK )
+	{
+		//get pathname and len
+		len = msg -> len;
+	}
+
+	if( type == READ ||
+		type == WRITE ||
+		type == LINK ||
+		type == SYMLINK ||
+		type == READLINK)
+	{
+		//get buf and size
+		size = msg -> size;
+	}
+
+	if( type == READ || type == WRITE )
+	{
+		//get inode and pos
+		inode = msg -> inode;
+		currentPos = msg -> len;
+	}
+
+	switch(type)
+	{
+		case OPEN:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message OPEN: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
+			break;
+		case CREATE:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message CREATE: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
+			break;
+		case UNLINK:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message UNLINK: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
+			break;
+		case MKDIR:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message MKDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
+			break;
+		case RMDIR:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message RMDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
+			break;
+		case CHDIR:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message CHDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
+			break;
+		case STAT:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message STAT: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
+			break;
+		case READLINK:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message READLINK: type(%d), len(%d), pathname(%s), size(%d), buf(%s)\n", type, len, pathname, size, buf);
+			break;
+		case LINK:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message LINK: type(%d), oldLen(%d), oldName(%s), newLen(%d), newName(%s)\n", type, len, pathname, size, buf);
+			break;
+		case SYMLINK:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message SYMLINK: type(%d), oldLen(%d), oldName(%s), newLen(%d), newName(%s)\n", type, len, pathname, size, buf);
+			break;
+		case READ:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode, currentPos, size, buf);
+			break;
+		case WRITE:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode, currentPos, size, buf);
+			break;
+		  
+	}
+		
 }
 
 int main( int argc, char **argv )
