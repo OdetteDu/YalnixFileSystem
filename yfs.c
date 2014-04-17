@@ -249,7 +249,7 @@ void calculateFreeBlocksAndInodes()
 void addressMessage(struct Message *msg)
 {
 	int type = msg -> messageType;
-	TracePrintf(500, "[Testing @ yfs.c @ receiveMessage]: receive message: type(%d)\n", type);
+	TracePrintf(500, "[Testing @ yfs.c @ receiveMessage]: receive message typed %d\n", type);
 
 	int len;
 	char *pathname;
@@ -271,6 +271,7 @@ void addressMessage(struct Message *msg)
 	{
 		//get pathname and len
 		len = msg -> len;
+		pathname = malloc(sizeof(char) * len);
 	}
 
 	if( type == READ ||
@@ -281,6 +282,7 @@ void addressMessage(struct Message *msg)
 	{
 		//get buf and size
 		size = msg -> size;
+		buf = malloc(sizeof(char) * size);
 	}
 
 	if( type == READ || type == WRITE )
@@ -328,7 +330,12 @@ void addressMessage(struct Message *msg)
 		case WRITE:
 			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode, currentPos, size, buf);
 			break;
-		  
+		case SYNC:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message SYNC: type(%d)\n", type);
+			break;
+		case SHUTDOWN:
+			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message SHUTDOWN: type(%d)\n", type);
+			break;
 	}
 		
 }
