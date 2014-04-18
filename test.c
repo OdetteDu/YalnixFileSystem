@@ -10,5 +10,6 @@ int main(int argc, char **argv)
 	Create("/Test///abc/de/f//gh/i//j/kl//mn/odette");
 	
 	TracePrintf(500, "return from open\n");
-	return 0;
+//	return 0;
+	Exit(0);
 }

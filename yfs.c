@@ -8,6 +8,8 @@
 
 struct Message *msg; 
 char *pathname;
+char fileName[DIRNAMELEN];
+int fileNameCount;
 
 void printInode( int level, char *where, struct inode *inode )
 {
@@ -249,14 +251,37 @@ void calculateFreeBlocksAndInodes()
 	TracePrintf( level, "\n" );
 }
 
-void gotoDirectory( char *pathname )
+//return the last directory's inode number
+int gotoDirectory( char *pathname, int pathNameLen )
 {
 	int i, j;
-	char fileName[DIRNAMELEN];
-	int fileNameCount = 0;
+	int lastDirectoryInodeNum;
+	char c = pathname[0];
+	//check is pathname is empty
+	if(pathNameLen == 0 || c=='\0')
+	{
+		TracePrintf(0, "[Error @ yfs.c @ gotoDirectory]: pathname's length is 0: %s\n", pathname);
+		return ERROR;
+	}
+
+	//determine if the file use absolute or relative pathname
+	if(c=='/')
+	{
+		//This is absolute pathname
+		TracePrintf(300, "[Testing @ yfs.c @ gotoDirectory]: absolute pathname: %s \n", pathname);
+		lastDirectoryInodeNum = ROOTINODE;
+	}
+	else
+	{
+		//This is relative pathname
+		TracePrintf(300, "[Testing @ yfs.c @ gotoDirectory]: relative pathname: %s \n", pathname);
+	}
+
+
+	//parse the pathname and change the lastDirectoryInodeNum
 	for(i=0; i<MAXPATHNAMELEN; i++)
 	{
-		char c = pathname[i];
+		c = pathname[i];
 		TracePrintf(1300, "[Testing @ yfs.c @ gotoDirectory]: char: %c\n", c);
 
 		if(c == '/')
@@ -289,6 +314,20 @@ void gotoDirectory( char *pathname )
 
 	TracePrintf(300, "[Testing @ yfs.c @ gotoDirectory]: need to go to open or create this file (%s) in the current directory\n", fileName);
 
+	return lastDirectoryInodeNum;
+}
+
+int createFile(char *pathname, int pathNameLen)
+{
+	int directoryInodeNum = gotoDirectory(pathname, pathNameLen);
+	if(directoryInodeNum == ERROR)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ Create]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName);
+		return ERROR;
+	}
+
+	//read directoryInodeNum
+	return 0;
 }
 
 void addressMessage(int pid, struct Message *msg)
@@ -353,7 +392,7 @@ void addressMessage(int pid, struct Message *msg)
 			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message OPEN: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
 			break;
 		case CREATE:
-			gotoDirectory(pathname);
+			createFile(pathname, len);
 			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message CREATE: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
 			break;
 		case UNLINK:
