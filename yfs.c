@@ -6,6 +6,9 @@
 
 #include "global.h"
 
+struct Message *msg; 
+char *pathname;
+
 void printInode( int level, char *where, struct inode *inode )
 {
 	//Print basic information about an inode
@@ -246,13 +249,55 @@ void calculateFreeBlocksAndInodes()
 	TracePrintf( level, "\n" );
 }
 
+void gotoDirectory( char *pathname )
+{
+	int i, j;
+	char fileName[DIRNAMELEN];
+	int fileNameCount = 0;
+	for(i=0; i<MAXPATHNAMELEN; i++)
+	{
+		char c = pathname[i];
+		TracePrintf(1300, "[Testing @ yfs.c @ gotoDirectory]: char: %c\n", c);
+
+		if(c == '/')
+		{
+			if(fileNameCount != 0)
+			{
+				TracePrintf(300, "[Testing @ yfs.c @ gotoDirectory]: need to go to this directory (%s) in the current directory\n", fileName);
+				fileNameCount = 0;
+				for(j=0; j<DIRNAMELEN; j++)
+				{
+					fileName[j] = 0;
+				}
+			}
+		}
+		else if(c == '\0')
+		{
+			TracePrintf(300, "[Testing @ yfs.c @ gotoDirectory]: parse char 0\n");
+			break;
+		}
+		else
+		{
+			fileName[fileNameCount] = c;
+			fileNameCount ++;
+			if(fileNameCount >= DIRNAMELEN)
+			{
+				TracePrintf(0, "[Error @ yfs.c @ gotoDirectory]: file name length exceeds DIRNAMELEN: %s\n", fileName);
+			}
+		}
+	}
+
+	TracePrintf(300, "[Testing @ yfs.c @ gotoDirectory]: need to go to open or create this file (%s) in the current directory\n", fileName);
+
+}
+
 void addressMessage(int pid, struct Message *msg)
 {
 	int type = msg -> messageType;
 	TracePrintf(500, "[Testing @ yfs.c @ receiveMessage]: receive message typed %d\n", type);
 
 	int len;
-	char *pathname;
+//	char *pathname;
 	int size;
 	char *buf;
 	int inode;
@@ -271,7 +316,7 @@ void addressMessage(int pid, struct Message *msg)
 	{
 		//get pathname and len
 		len = msg -> len;
-		pathname = malloc(sizeof(char) * len);
+//		pathname = malloc(sizeof(char) * len);
 		int copyFrom = CopyFrom(pid, pathname, msg -> pathname, len);
 		if(copyFrom != 0)
 		{
@@ -308,6 +353,7 @@ void addressMessage(int pid, struct Message *msg)
 			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message OPEN: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
 			break;
 		case CREATE:
+			gotoDirectory(pathname);
 			TracePrintf(500, "[Testing @ yfs.c @ addressMessage]: Message CREATE: type(%d), len(%d), pathname(%s)\n", type, len, pathname);
 			break;
 		case UNLINK:
@@ -367,10 +413,11 @@ int main( int argc, char **argv )
 	}
 	else
 	{
+		msg = malloc(sizeof(struct Message));
+		pathname = malloc(sizeof(char) * MAXPATHNAMELEN);
 		while(1)
 		{
 			TracePrintf(500, "loop\n");
-			struct Message *msg = malloc(sizeof(struct Message));
 			int sender = Receive(msg);
 			if(sender == ERROR)
 			{

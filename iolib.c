@@ -40,11 +40,14 @@ extern int Open(char *pathname)
 	msg.pathname = pathname;
 	msg.len = strlen(pathname); 
 
+	TracePrintf(500, "before blocked from send\n");
 	int send = Send((void *)&msg, FILE_SERVER);
 	if( send != 0 )
 	{
 		TracePrintf(0, "[Error @ iolib.h @ Open]: The send status is Error.\n");
 	}
+	
+	TracePrintf(500, "Unblocked from send\n");
 
 	return 0;	
 }
