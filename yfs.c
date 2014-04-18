@@ -369,6 +369,7 @@ int main( int argc, char **argv )
 	{
 		while(1)
 		{
+			TracePrintf(500, "loop\n");
 			struct Message *msg = malloc(sizeof(struct Message));
 			int sender = Receive(msg);
 			if(sender == ERROR)
