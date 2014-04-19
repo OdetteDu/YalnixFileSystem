@@ -304,7 +304,7 @@ struct inode* readInode( int inodeNum )
 
 //get a list of block number that a file is using
 //return num of blocks used
-int getUsedBlocks( struct inode *inode, int *usedBlocks )
+int getUsedBlocks( struct inode *inode, int **usedBlocks )
 {
 	int level = 400;
 	char *where = "yfs.c @ getUsedBlocks";
@@ -320,7 +320,7 @@ int getUsedBlocks( struct inode *inode, int *usedBlocks )
 
 	int count=0;
 	int numBlocks = calculateNumBlocksUsed( inode->size );
-	usedBlocks = (int *) malloc( sizeof(int) * numBlocks );
+	*usedBlocks = (int *) malloc( sizeof(int) * numBlocks );
 
 	if( numBlocks <= NUM_DIRECT )
 	{
@@ -330,7 +330,7 @@ int getUsedBlocks( struct inode *inode, int *usedBlocks )
 		for( i = 0; i < numBlocks; i++ )
 		{
 			TracePrintf( level, "%d\n", inode->direct[i] );
-			usedBlocks[count] = inode->direct[i];
+			(*usedBlocks)[count] = inode->direct[i];
 			count++;
 		}
 		TracePrintf( level, "\n" );
@@ -343,7 +343,7 @@ int getUsedBlocks( struct inode *inode, int *usedBlocks )
 		for( i = 0; i < NUM_DIRECT; i++ )
 		{
 			TracePrintf( level, "%d\n", inode->direct[i] );
-			usedBlocks[count] = inode->direct[i];
+			(*usedBlocks)[count] = inode->direct[i];
 			count++;
 		}
 		TracePrintf( level, "\n" );
@@ -366,7 +366,7 @@ int getUsedBlocks( struct inode *inode, int *usedBlocks )
 			{
 				int blockIndex = *((int *) buf + i);
 				TracePrintf( level, "%d\n", blockIndex );
-				usedBlocks[count] = blockIndex;
+				(*usedBlocks)[count] = blockIndex;
 				count++;
 			}
 			TracePrintf( level, "\n" );
@@ -442,16 +442,19 @@ int gotoDirectory( char *pathname, int pathNameLen )
 
 void readDirectory( int inodeNum )
 {
+
 	struct inode *inode = readInode(inodeNum);
-	int *usedBlocks = NULL;
-	int usedBlocksCount = getUsedBlocks(inode, usedBlocks);
+	int placeHolder = 0;
+	int *usedBlocks = 0;//remember to free this thing somewhere later
+	int usedBlocksCount = getUsedBlocks(inode, &usedBlocks);
 	TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlockCount: %d\n", usedBlocksCount);
 	TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlock: %d\n", usedBlocks);
 	int i;
 	for(i=0; i<usedBlocksCount; i++)
 	{
-		TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlock: %d\n", usedBlocks[i]);
+		TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlock[%d]: %d\n",i, usedBlocks[i]);
 	}
+	free(usedBlocks);
 }
 
 int createFile( char *pathname, int pathNameLen )
