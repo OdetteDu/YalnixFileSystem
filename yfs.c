@@ -265,9 +265,17 @@ int calculateNumBlocksUsed( int size )
 	}
 }
 
-int getWhichBlockInodeIn( int inodeNum )
+int getBlockNumInodeIn( int inodeNum )
 {
+	TracePrintf(400, "[Testing @ yfs.c @ getWhichBlockInodeIn]: inode (%d) is in block (%d)\n", inodeNum, inodeNum/(BLOCKSIZE/INODESIZE)+1);
 	return inodeNum/(BLOCKSIZE/INODESIZE)+1; 
+}
+
+int getInodeIndexWithinBlock(int inodeNum)
+{
+	int inodeIndex = inodeNum % (BLOCKSIZE/INODESIZE); 
+	TracePrintf(400, "[Testing @ yfs.c @ getInodeIndexWithinBlock]: inode (%d)'s index is (%d)\n", inodeNum, inodeIndex);
+	return inodeIndex;
 }
 
 char* readBlock( int blockNum )
@@ -285,10 +293,10 @@ char* readBlock( int blockNum )
 
 struct inode* readInode( int inodeNum )
 {
-	int blockNum = getWhichBlockInodeIn(inodeNum);
+	int blockNum = getBlockNumInodeIn(inodeNum);
 
 	char *buf = readBlock(blockNum);
-	int inodeIndex = inodeNum / (BLOCKSIZE/INODESIZE); 
+	int inodeIndex = getInodeIndexWithinBlock(inodeNum);  
 	struct inode *inode = (struct inode *)buf + inodeIndex;
 	TracePrintf( 400, "[Testing @ yfs.c  @ readInode]: inode(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink, inode->size, inode->indirect );
 	return inode;
@@ -298,7 +306,7 @@ struct inode* readInode( int inodeNum )
 //return num of blocks used
 int getUsedBlocks( struct inode *inode, int *usedBlocks )
 {
-	int level = 1400;
+	int level = 400;
 	char *where = "yfs.c @ getUsedBlocks";
 
 	//Print basic information about an inode
@@ -310,7 +318,7 @@ int getUsedBlocks( struct inode *inode, int *usedBlocks )
 		return ERROR; //return 0
 	}
 
-	int count;
+	int count=0;
 	int numBlocks = calculateNumBlocksUsed( inode->size );
 	usedBlocks = (int *) malloc( sizeof(int) * numBlocks );
 
@@ -437,6 +445,8 @@ void readDirectory( int inodeNum )
 	struct inode *inode = readInode(inodeNum);
 	int *usedBlocks = NULL;
 	int usedBlocksCount = getUsedBlocks(inode, usedBlocks);
+	TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlockCount: %d\n", usedBlocksCount);
+	TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlock: %d\n", usedBlocks);
 	int i;
 	for(i=0; i<usedBlocksCount; i++)
 	{
@@ -454,6 +464,7 @@ int createFile( char *pathname, int pathNameLen )
 	}
 
 	//read directoryInodeNum
+	readDirectory(ROOTINODE);
 	return 0;
 }
 
