@@ -317,6 +317,11 @@ int gotoDirectory( char *pathname, int pathNameLen )
 	return lastDirectoryInodeNum;
 }
 
+void readDirectory(int inodeNum)
+{
+	  
+}
+
 int createFile(char *pathname, int pathNameLen)
 {
 	int directoryInodeNum = gotoDirectory(pathname, pathNameLen);
