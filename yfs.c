@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <comp421/yalnix.h>
 #include <comp421/filesystem.h>
 #include <comp421/iolib.h>
@@ -282,13 +283,22 @@ char* readBlock( int blockNum )
 {
 	char *buf;
 	buf = malloc( sizeof(char) * SECTORSIZE );
-	int readIndirectBlockStatus = ReadSector( blockNum, buf );
-	if( readIndirectBlockStatus != 0 )
+	int readBlockStatus = ReadSector( blockNum, buf );
+	if( readBlockStatus != 0 )
 	{
-		TracePrintf( 0, "[Error @ yfs.c @ readBlock]: Read indirect block %d unsuccessfully\n", blockNum );
+		TracePrintf( 0, "[Error @ yfs.c @ readBlock]: Read block %d unsuccessfully\n", blockNum );
 	}
 
 	return buf;
+}
+
+void writeBlock( int blockNum, char *buf)
+{
+	int writeBlockStatus = WriteSector(blockNum, buf);
+	if(writeBlockStatus != 0)
+	{
+		TracePrintf( 0, "[Error @ yfs.c @ writeBlock]: Write block %d unsuccessfully\n", blockNum );
+	}
 }
 
 struct inode* readInode( int inodeNum )
@@ -299,6 +309,19 @@ struct inode* readInode( int inodeNum )
 	int inodeIndex = getInodeIndexWithinBlock(inodeNum);  
 	struct inode *inode = (struct inode *)buf + inodeIndex;
 	TracePrintf( 400, "[Testing @ yfs.c  @ readInode]: inode(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink, inode->size, inode->indirect );
+	return inode;
+}
+
+struct inode* writeInode( int inodeNum, struct inode *newInode )
+{
+	int blockNum = getBlockNumInodeIn(inodeNum);
+
+	char *buf = readBlock(blockNum);
+	int inodeIndex = getInodeIndexWithinBlock(inodeNum);  
+	memcpy((struct inode *)buf + inodeIndex, newInode, sizeof(struct inode *));
+	struct inode *inode = (struct inode *)buf + inodeIndex;
+	TracePrintf( 400, "[Testing @ yfs.c  @ writeInode]: inode after write(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink, inode->size, inode->indirect );
+	writeBlock(blockNum, buf);
 	return inode;
 }
 
@@ -440,11 +463,13 @@ int gotoDirectory( char *pathname, int pathNameLen )
 	return lastDirectoryInodeNum;
 }
 
-void readDirectory( int inodeNum )
+int readDirectory( int inodeNum, char *filename, int fileNameLen )
 {
-
+	//need to check if read inode successfully, such as make sure inodeNum is in correct bound
 	struct inode *inode = readInode(inodeNum);
 	int *usedBlocks = 0;//remember to free this thing somewhere later
+
+	//need to check if get used blocks successfully, the inode may be a free inode
 	int usedBlocksCount = getUsedBlocks(inode, &usedBlocks);
 	TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlockCount: %d\n", usedBlocksCount);
 	TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlock: %d\n", usedBlocks);
@@ -461,12 +486,21 @@ void readDirectory( int inodeNum )
 			struct dir_entry *dirEntry = (struct dir_entry *)buf + index;
 			TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: block (%d), index(%d), directory[%d]: inum(%d), name(%s)\n", i, index, directoryCount, dirEntry -> inum, dirEntry -> name);
 
+			//compare the dir_entry's name and fileName
+			int compare = strncmp(dirEntry -> name, fileName, DIRNAMELEN);
+			if(compare == 0)
+			{
+				//match found
+				return dirEntry -> inum;
+			}
+
 			index ++;
 			directoryCount ++;
 		}
 		index = 0;
 	}
 	free(usedBlocks);
+	return 0;
 }
 
 int createFile( char *pathname, int pathNameLen )
@@ -474,12 +508,44 @@ int createFile( char *pathname, int pathNameLen )
 	int directoryInodeNum = gotoDirectory( pathname, pathNameLen );
 	if( directoryInodeNum == ERROR )
 	{
-		TracePrintf( 0, "[Error @ yfs.c @ Create]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
+		TracePrintf( 0, "[Error @ yfs.c @ CreateFile]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
 		return ERROR;
 	}
 
 	//read directoryInodeNum
-	readDirectory(ROOTINODE);
+	int fileInodeNum = readDirectory(ROOTINODE, fileName, fileNameCount);
+	if(fileInodeNum == 0)
+	{
+		//file not found, make a new file
+		//create a newInode for the new file
+		int newInodeNum = 2; //allocate inode num 
+		struct inode *inode = readInode(newInodeNum);
+		inode -> type = INODE_REGULAR;
+		inode -> nlink = 1; 
+		inode -> size = 0;
+		writeInode(newInodeNum, inode);	
+
+		//create a new dir_entry for the new file
+		struct dir_entry *newDirEntry;
+		newDirEntry = malloc(sizeof(struct dir_entry));
+		newDirEntry -> inum = newInodeNum;
+
+		//this part may be substituted by a c libaray function
+		int i;
+		for(i = 0; i<DIRNAMELEN; i++)
+		{
+			newDirEntry -> name[i] = fileName[i];
+		}
+
+		TracePrintf( 350, "[Testing @ yfs.c @ CreateFile]: new dir_entry created: inum(%d), name(%s)\n", newDirEntry -> inum, newDirEntry -> name );
+		
+	}
+	else
+	{
+		//file found, empty the file 
+	}
+	
+//	fileInodeNum = readDirectory(ROOTINODE, fileName, fileNameCount);//test purpose only, should be delete
 	return 0;
 }
 
