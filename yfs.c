@@ -444,15 +444,27 @@ void readDirectory( int inodeNum )
 {
 
 	struct inode *inode = readInode(inodeNum);
-	int placeHolder = 0;
 	int *usedBlocks = 0;//remember to free this thing somewhere later
 	int usedBlocksCount = getUsedBlocks(inode, &usedBlocks);
 	TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlockCount: %d\n", usedBlocksCount);
 	TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlock: %d\n", usedBlocks);
+	int numDirEntries = (inode -> size)/sizeof(struct dir_entry);
+	int directoryCount = 0;
+	int index = 0;
 	int i;
 	for(i=0; i<usedBlocksCount; i++)
 	{
 		TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: usedBlock[%d]: %d\n",i, usedBlocks[i]);
+		char *buf = readBlock(usedBlocks[i]);
+		while(index < BLOCKSIZE / sizeof(struct dir_entry) && directoryCount < numDirEntries)
+		{
+			struct dir_entry *dirEntry = (struct dir_entry *)buf + index;
+			TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: block (%d), index(%d), directory[%d]: inum(%d), name(%s)\n", i, index, directoryCount, dirEntry -> inum, dirEntry -> name);
+
+			index ++;
+			directoryCount ++;
+		}
+		index = 0;
 	}
 	free(usedBlocks);
 }
