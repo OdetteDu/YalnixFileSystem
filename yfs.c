@@ -292,13 +292,16 @@ char* readBlock( int blockNum )
 	return buf;
 }
 
-void writeBlock( int blockNum, char *buf)
+int writeBlock( int blockNum, char *buf)
 {
 	int writeBlockStatus = WriteSector(blockNum, buf);
 	if(writeBlockStatus != 0)
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ writeBlock]: Write block %d unsuccessfully\n", blockNum );
+		return ERROR;
 	}
+	TracePrintf( 350, "[Testing @ yfs.c @ writeBlock]: Write block %d successfully\n", blockNum );
+	return 0;
 }
 
 struct inode* readInode( int inodeNum )
@@ -532,6 +535,13 @@ int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
 		TracePrintf(300, "[Testing @ yfs.c @ writeNewEntryToDirectory]: block (%d), index(%d), directory[%d]: inum(%d), name(%s)\n", blockNum, dirEntryIndex, dirEntryIndex, dirEntry -> inum, dirEntry -> name);
 		writeBlock(blockNum, buf);
 		free(usedBlocks);
+
+		struct inode *inode = readInode(inodeNum);
+		int originalSize = inode -> size;
+		int newSize = originalSize + sizeof(struct dir_entry);
+		inode -> size = newSize;
+		TracePrintf(300, "Testin @ yfs.c @ writeNewEntryToDirectory]: originalSize: %d, newSize: %d\n", originalSize, newSize);
+		writeInode(inodeNum, inode);	
 	}
 	return 0;
 }
