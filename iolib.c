@@ -29,7 +29,8 @@ int getFreeFD(){
 	int i;
 	for(i=0; i < MAX_OPEN_FILES; i++){
 		  if(openFileTable[i].isOpen == 0){
-			    return i;
+			  //openFileTable[i].isOpen = 1;
+			  return i;
 		  }
 	}
 	TracePrintf(0, "[Error @ iolib.c @ getFreeFD]: Reached MAX_OPEN_FILES\n");
@@ -68,7 +69,7 @@ int isFileDescriptorLegal(int fd)
 		return ERROR;
 	}
 
-	if(openFileTable[fd].status == FREE)
+	if(openFileTable[fd].isOpen == 0)
 	{
 		TracePrintf(0, "[Error @ iolib.c @ isFileDescriptorLegal]: The fd %d is free\n");
 		return ERROR;
@@ -80,9 +81,28 @@ int isFileDescriptorLegal(int fd)
 extern int Open(char *pathname)
 {
 	struct Message msg;
+	int newfd, length;
+	char *pathCopy;
+
+	TracePrintf(0, "[Testing @ iolib.c @ Open]: Entering open\n");	
+	if ((newfd = getFreeFD()) == ERROR) return ERROR;//get new fd
+	if((length = getPathnameLength(pathname))==ERROR) return ERROR;//get path length, no \0
+	//make a new copy of the path name;
+	if((pathCopy= malloc((length+1)*sizeof(char)))==NULL)
+	{
+		TracePrintf(0, "[Error @ iolib.c @ Open]: Failed to malloc for pathname copy\n");	
+		return ERROR;		
+	}
+	memcpy(pathCopy, pathname, length+1);
+
+	
+	TracePrintf(0, "[Testing @ iolib.c @ Open]: copied path name\n");	
+	openFileTable[newfd].fd = newfd;
+	openFileTable[newfd].isOpen = 1;
+
 	msg.messageType = OPEN;
-	msg.pathname = pathname;
-	msg.len = strlen(pathname); 
+	msg.pathname = pathCopy;
+	msg.len = length+1;//strlen(pathname); 
 
 	TracePrintf(500, "before blocked from send\n");
 	int send = Send((void *)&msg, FILE_SERVER);
@@ -92,12 +112,16 @@ extern int Open(char *pathname)
 	}
 	
 	TracePrintf(500, "Unblocked from send\n");
-
-	return 0;	
+	free(pathCopy);
+	return newfd;	
 }
 
 extern int Close(int fd)
 {
+	if(isFileDescriptorLegal(fd)==ERROR) return ERROR;
+	openFileTable[fd].isOpen = 0;
+	openFileTable[fd].inode = -1;	
+	TracePrintf(0, "[Testing @ iolib.c @ Close]: Closed file fd(%d)\n", fd);	
 	return 0;	
 }
 
@@ -105,26 +129,25 @@ extern int Create(char *pathname)
 {
 	struct Message msg;
 	int newfd, length;
-	struct OpenFileEntry file;
 	char *pathCopy;
 
-	TracePrintf(0, "[Error @ iolib.c @ getFreeFD]: Reached MAX_OPEN_FILES\n");
 	
+	TracePrintf(0, "[Testing @ iolib.c @ Create]: Entering create\n");	
 	if ((newfd = getFreeFD()) == ERROR) return ERROR;//get new fd
 	if((length = getPathnameLength(pathname))==ERROR) return ERROR;//get path length, no \0
 	
 	//make a new copy of the path name;
 	if((pathCopy= malloc((length+1)*sizeof(char)))==NULL)
 	{
-		TracePrintf(0, "[Error @ iolib.c @ getFreeFD]: Failed to malloc for pathname copy\n");	
+		TracePrintf(0, "[Error @ iolib.c @ Create]: Failed to malloc for pathname copy\n");	
 		return ERROR;		
 	}
 	memcpy(pathCopy, pathname, length+1);
 
-	file = openFileTable[newfd];
-	file.fd = newfd;
-	file.isOpen = 1;
-	TracePrintf(0, "[Error @ iolib.c @ getFreeFD]: Reached MAX_OPEN_FILES\n");
+	
+	TracePrintf(0, "[Testing @ iolib.c @ Create]: copied path name\n");	
+	openFileTable[newfd].fd = newfd;
+	openFileTable[newfd].isOpen = 1;
 
 	//create the file from server
 	msg.messageType = CREATE;
@@ -136,7 +159,8 @@ extern int Create(char *pathname)
 	{
 		TracePrintf(0, "[Error @ iolib.h @ Create]: The send status is Error.\n");
 	}
-	return 0;	
+	free(pathCopy);
+	return newfd;	
 }
 
 extern int Read(int fd, void *buf, int size)

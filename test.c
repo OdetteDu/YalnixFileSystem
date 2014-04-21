@@ -7,7 +7,10 @@
 int main(int argc, char **argv)
 {
 	printf("Hello, World!\n");
-	Create("/Test///abc/de/f//gh/i//j/kl//mn/odette");
+	int fd =Create("/Test///abc/de/f//gh/i//j/kl//mn/odette");
+	int fd2 = Open("/Test///abc/de/f//gh/i//j/kl//mn/odette");
+	Close(fd);
+	Close(fd2);
 	
 	TracePrintf(500, "return from open\n");
 //	return 0;

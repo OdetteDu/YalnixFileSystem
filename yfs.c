@@ -110,11 +110,11 @@ void printDisk( int level, char *where )
 
 	//Print fs_header
 	struct fs_header *fsHeader = (struct fs_header *) buf;
-	TracePrintf( level, "fs_header: num_blocks(%d), num_inodes(%d)\n", fsHeader->num_blocks, fsHeader->num_inodes );
+	TracePrintf( level, "[Testing @ %s @ printDisk] fs_header: num_blocks(%d), num_inodes(%d)\n",where, fsHeader->num_blocks, fsHeader->num_inodes );
 
 	//Print inodesi in blcok 1
 	int numOfBlocksContainingInodes = ((fsHeader->num_inodes) + 1) / (BLOCKSIZE / INODESIZE);
-	TracePrintf( level, "inodes in %d blocks:\n", numOfBlocksContainingInodes );
+	TracePrintf( level, "[Testing @ %s @ printDisk] inodes in %d blocks:\n",where, numOfBlocksContainingInodes );
 	int i;
 	for( i = 1; i < BLOCKSIZE / INODESIZE - 1; i++ )
 	{
@@ -159,11 +159,11 @@ int markUsedBlocks( struct inode *inode, LinkedIntList *isBlockFreeHead )
 	else
 	{
 		//Print direct block
-		TracePrintf( level, "Direct block: \n" );
+		TracePrintf( level, "[Testing @ %s] Direct block: \n", where );
 		int i;
 		for( i = 0; i < NUM_DIRECT; i++ )
 		{
-			TracePrintf( level, "At index[%d], %d\n", i, inode->direct[i] );
+			TracePrintf( level, "[Testing @ %s] At inode(%p)->direct[%d], %d\n", where, inode, i, inode->direct[i] );
 			LinkedIntList* block = get(inode->direct[i], isBlockFreeHead);//->isFree= USED;
 			TracePrintf(level, "[Testing @ %s]: direct[%d] ptr: %p\n", where, i, block);
 		}
@@ -182,11 +182,11 @@ int markUsedBlocks( struct inode *inode, LinkedIntList *isBlockFreeHead )
 				return ERROR;
 			}
 
-			TracePrintf( level, "Indirect block: \n" );
+			TracePrintf( level, "[Testing @ %s] Indirect block: \n", where );
 			for( i = 0; i < sizeof(char) * SECTORSIZE / sizeof(int); i++ )
 			{
 				int blockIndex = *((int *) buf + i);
-				TracePrintf( level, "%d\n", blockIndex );
+				TracePrintf( level, "[Testing @ %s] indirect block [%d] index: %d\n", where, i, blockIndex );
 				get(blockIndex, isBlockFreeHead)->isFree= USED;
 			}
 			TracePrintf( level, "\n" );
@@ -262,7 +262,7 @@ void calculateFreeBlocksAndInodes()
 	printLinkedList(level, where, isBlockFreeHead);
 	//Print inodes in blcok 1
 	int numOfBlocksContainingInodes = ((fsHeader->num_inodes) + 1) / (BLOCKSIZE / INODESIZE);
-	TracePrintf( level, "BLOCKSIZE/INODESIZE: %d, inodes in %d blocks:\n", BLOCKSIZE / INODESIZE, numOfBlocksContainingInodes );
+	TracePrintf( level, "[Testing @ %s] BLOCKSIZE/INODESIZE: %d, inodes in %d blocks:\n", where, BLOCKSIZE / INODESIZE, numOfBlocksContainingInodes );
 	int inodeIndex = 0;
 	for( i = 1; i < BLOCKSIZE / INODESIZE; i++ )
 	{
@@ -666,7 +666,7 @@ void addressMessage( int pid, struct Message *msg )
 	TracePrintf( 500, "[Testing @ yfs.c @ receiveMessage]: receive message typed %d\n", type );
 
 	int len;
-//	char *pathname;
+	char *pathname;
 	int size;
 	char *buf;
 	int inode;
@@ -677,7 +677,7 @@ void addressMessage( int pid, struct Message *msg )
 	{
 		//get pathname and len
 		len = msg->len;
-//		pathname = malloc(sizeof(char) * len);
+		pathname = malloc(sizeof(char) * len);
 		int copyFrom = CopyFrom( pid, pathname, msg->pathname, len );
 		if( copyFrom != 0 )
 		{
