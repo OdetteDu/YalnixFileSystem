@@ -9,12 +9,56 @@
 
 struct OpenFileEntry
 {
-	int status;
+	int fd;
+	int isOpen;
 	int inode;
 	int currentPos;
+	int status;
 };
 
 struct OpenFileEntry openFileTable[MAX_OPEN_FILES];
+
+/* Function declarations */
+int isFileDescriptorLegal(int fd);
+int getFreeFD(void);
+int checkFileOpen(int fd);
+int getPathnameLength(char *buf);
+
+/* Start of implementation */
+int getFreeFD(){
+	int i;
+	for(i=0; i < MAX_OPEN_FILES; i++){
+		  if(openFileTable[i].isOpen == 0){
+			    return i;
+		  }
+	}
+	TracePrintf(0, "[Error @ iolib.c @ getFreeFD]: Reached MAX_OPEN_FILES\n");
+	return ERROR;//did not find a free fd
+}
+
+int checkFileOpen(int fd){
+	//presumably the fd is the index of the file entry in our static array
+	if(openFileTable[fd].isOpen == 1) return fd;
+
+	TracePrintf(0, "[Error @ iolib.c @ checkFileOpen]: Given fd(%d) isOpen parameter unset\n", fd);
+	return ERROR;
+}
+
+/* checks if the path name given exceeds the maximum path name length */
+int getPathnameLength(char *buf){
+	int length = 0;
+	char *name = buf;
+	while((*name)!='\0'){
+		length ++;
+		if(length >= MAXPATHNAMELEN){
+			  
+		TracePrintf(0, "[Error @ iolib.c @ getPathnameLength]: Given path name is longer than 32\n");
+		return ERROR;
+		}
+		name ++;
+	}
+	return length;
+}
 
 int isFileDescriptorLegal(int fd)
 {
@@ -60,9 +104,32 @@ extern int Close(int fd)
 extern int Create(char *pathname)
 {
 	struct Message msg;
+	int newfd, length;
+	struct OpenFileEntry file;
+	char *pathCopy;
+
+	TracePrintf(0, "[Error @ iolib.c @ getFreeFD]: Reached MAX_OPEN_FILES\n");
+	
+	if ((newfd = getFreeFD()) == ERROR) return ERROR;//get new fd
+	if((length = getPathnameLength(pathname))==ERROR) return ERROR;//get path length, no \0
+	
+	//make a new copy of the path name;
+	if((pathCopy= malloc((length+1)*sizeof(char)))==NULL)
+	{
+		TracePrintf(0, "[Error @ iolib.c @ getFreeFD]: Failed to malloc for pathname copy\n");	
+		return ERROR;		
+	}
+	memcpy(pathCopy, pathname, length+1);
+
+	file = openFileTable[newfd];
+	file.fd = newfd;
+	file.isOpen = 1;
+	TracePrintf(0, "[Error @ iolib.c @ getFreeFD]: Reached MAX_OPEN_FILES\n");
+
+	//create the file from server
 	msg.messageType = CREATE;
-	msg.pathname = pathname;
-	msg.len = strlen(pathname); 
+	msg.pathname = pathCopy;
+	msg.len = length+1; 
 
 	int send = Send((void *)&msg, FILE_SERVER);
 	if( send != 0 )

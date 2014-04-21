@@ -6,6 +6,11 @@
 #include <comp421/iolib.h>
 #include "global.h"
 
+/* Function declarations */
+void insertIntoLinkedIntList(LinkedIntList *node, LinkedIntList **head, LinkedIntList **tail);
+LinkedIntList* get(int index, LinkedIntList *head);
+
+//end of function declarations
 /* Fucntion prototypes */
 //begin of linked list methods
 void insertIntoLinkedIntList(LinkedIntList* node, LinkedIntList** head, LinkedIntList** tail){
