@@ -6,12 +6,17 @@
 #include <comp421/iolib.h>
 #include "global.h"
 
+/* Global Variables */
+struct Message *msg;
+char *pathname;
+char fileName[DIRNAMELEN];
+int fileNameCount;
+
 /* Function declarations */
 void insertIntoLinkedIntList(LinkedIntList *node, LinkedIntList **head, LinkedIntList **tail);
 LinkedIntList* get(int index, LinkedIntList *head);
 
 //end of function declarations
-/* Fucntion prototypes */
 //begin of linked list methods
 void insertIntoLinkedIntList(LinkedIntList* node, LinkedIntList** head, LinkedIntList** tail){
         if(*head == NULL){ //change to NULL later
@@ -49,10 +54,8 @@ void printLinkedList(int level, char *where, LinkedIntList* head){
 
 }
 //end of linked list methods
-struct Message *msg;
-char *pathname;
-char fileName[DIRNAMELEN];
-int fileNameCount;
+
+
 
 void printInode( int level, char *where, struct inode *inode )
 {
