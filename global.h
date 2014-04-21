@@ -6,29 +6,29 @@
 #define USED 1
 
 //message type
-#define OPEN 1
-#define CLOSE 2
-#define CREATE 3
-#define READ 4
-#define WRITE 5
-#define SEEK 6
-#define LINK 7
-#define UNLINK 8
-#define SYMLINK 9
-#define READLINK 10
-#define MKDIR 11
-#define RMDIR 12
-#define CHDIR 13
-#define STAT 14
-#define SYNC 15
-#define SHUTDOWN 16
+#define OPEN 0 
+#define CLOSE 1
+#define CREATE 2 
+#define READ 3
+#define WRITE 4
+#define SEEK 5
+#define LINK 6
+#define UNLINK 7
+#define SYMLINK 8
+#define READLINK 9
+#define MKDIR 10
+#define RMDIR 11
+#define CHDIR 12
+#define STAT 13
+#define SYNC 14
+#define SHUTDOWN 15
 
 struct Message
 {
 	int messageType;
-	int fd; //inum
-	int len; //offset or nlink
-	int size; //whence
+	int inode;
+	int len; //currentPos
+	int size;
 	char *pathname; //oldname
 	char *buf; //newname
 };
@@ -40,6 +40,6 @@ typedef struct linkedIntList{
 }LinkedIntList;
 
 LinkedIntList* get(int index, LinkedIntList* listHead);
-void insertIntoLinkedIntList(LinkedIntList* node ,  LinkedIntList* listHead ,  LinkedIntList* listTail);
+void insertIntoLinkedIntList(LinkedIntList* node ,  LinkedIntList** listHead ,  LinkedIntList** listTail);
 
 #endif
