@@ -708,50 +708,63 @@ void addressMessage( int pid, struct Message *msg )
 	{
 		case OPEN:
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message OPEN: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
+			//TODO:OPEN
 			break;
 		case CREATE:
 			createFile( pathname, len );
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CREATE: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case UNLINK:
+			//TODO: UNLINK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message UNLINK: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case MKDIR:
+			//TODO: MIDIR
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message MKDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case RMDIR:
+			//TODO: RMDIR
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message RMDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case CHDIR:
+			//TODO: CHDIR
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CHDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case STAT:
+			//TODO: STAT
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message STAT: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case READLINK:
+			//TODO: READLINK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message READLINK: type(%d), len(%d), pathname(%s), size(%d), buf(%s)\n", type, len,
 					pathname, size, buf );
 			break;
 		case LINK:
+			//TODO: LINK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message LINK: type(%d), oldLen(%d), oldName(%s), newLen(%d), newName(%s)\n", type,
 					len, pathname, size, buf );
 			break;
 		case SYMLINK:
+			//TODOZ: SYMLINK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SYMLINK: type(%d), oldLen(%d), oldName(%s), newLen(%d), newName(%s)\n",
 					type, len, pathname, size, buf );
 			break;
 		case READ:
+			//TODO: READ
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
 					currentPos, size, buf );
 			break;
 		case WRITE:
+			//TODO: WRITE
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
 					currentPos, size, buf );
 			break;
 		case SYNC:
+			//TODO: SYNC
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SYNC: type(%d)\n", type );
 			break;
 		case SHUTDOWN:
+			//TODO: SHUTDOWN
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SHUTDOWN: type(%d)\n", type );
 			break;
 	}
