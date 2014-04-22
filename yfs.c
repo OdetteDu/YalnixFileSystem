@@ -494,6 +494,7 @@ int getUsedBlocks( struct inode *inode, int **usedBlocks )
 }
 
 //return the last directory's inode number
+//This method also changes fileName and fileNameCount
 int gotoDirectory( char *pathname, int pathNameLen )
 {
 	int i, j;
@@ -516,6 +517,9 @@ int gotoDirectory( char *pathname, int pathNameLen )
 	else
 	{
 		//This is relative pathname
+		//change it to working directory inode number
+		lastDirectoryInodeNum = workingDirectoryInodeNumber;
+
 		TracePrintf( 300, "[Testing @ yfs.c @ gotoDirectory]: relative pathname: %s \n", pathname );
 	}
 
@@ -650,7 +654,9 @@ int createFile( char *pathname, int pathNameLen )
 	}
 
 	//read directoryInodeNum
-	int fileInodeNum = readDirectory(workingDirectoryInodeNumber, fileName, fileNameCount);//TODO, not always ROOTINODE
+	//	int fileInodeNum = readDirectory(workingDirectoryInodeNumber, fileName, fileNameCount);//TODO, not always ROOTINODE
+	
+	int fileInodeNum = readDirectory(directoryInodeNum, fileName, fileNameCount);//TODO, not always ROOTINODE
 	if(fileInodeNum == 0)
 	{
 		//file not found, make a new file
@@ -675,7 +681,7 @@ int createFile( char *pathname, int pathNameLen )
 		}
 
 		TracePrintf( 350, "[Testing @ yfs.c @ CreateFile]: new dir_entry created: inum(%d), name(%s)\n", newDirEntry -> inum, newDirEntry -> name );
-		writeNewEntryToDirectory(workingDirectoryInodeNumber, newDirEntry);//TODO, not always ROOTINODE
+		writeNewEntryToDirectory(directoryInodeNum, newDirEntry);//TODO, not always ROOTINODE
 	}
 	else
 	{
@@ -686,10 +692,22 @@ int createFile( char *pathname, int pathNameLen )
 	return fileInodeNum;
 }
 
-//Open file
+//Open file or a directory
 
-int openFile(char *pathname, int pathNameLen){
-	return 0; 
+int openFileOrDir(char *pathname, int pathNameLen){
+
+	//fill in fileName and fileName count;
+	int directoryInodeNum = gotoDirectory( pathname, pathNameLen );
+	if( directoryInodeNum == ERROR )
+	{
+			TracePrintf( 0, "[Error @ yfs.c @ CreateFile]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
+		return ERROR;
+	  
+	}
+	
+	int fileInodeNum = readDirectory(directoryInodeNum, fileName, fileNameCount);
+
+	return fileInodeNum; 
 }
 
 
@@ -741,7 +759,9 @@ void addressMessage( int pid, struct Message *msg )
 	{
 		case OPEN:
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message OPEN: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
+		
 			//TODO:OPEN
+			openFileOrDir(pathname, len);
 			break;
 		case CREATE:
 			createFile( pathname, len );

@@ -112,8 +112,8 @@ extern int Open(char *pathname)
 	}
 
 	openFileTable[newfd].inode = fileInode;//record the inode number of the open file
-	
-	TracePrintf(500, "Unblocked from send\n");
+	TracePrintf(500, "[Testing @ iolib.c @ Open]: opened the file with inode number: %d\n",fileInode);	
+	TracePrintf(500, "[ iolib.c @ Open] : Unblocked from send\n");
 	free(pathCopy);
 	return newfd;	
 }
@@ -162,6 +162,8 @@ extern int Create(char *pathname)
 		TracePrintf(0, "[Error @ iolib.h @ Create]: The send status is Error.\n");
 	}
 	openFileTable[newfd].inode = fileinode;
+	
+	TracePrintf(500, "[Testing @ iolib.c @ Open]: opened the file with inode number: %d\n",fileinode);	
 	free(pathCopy);
 
 	return newfd;	
