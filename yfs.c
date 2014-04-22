@@ -16,13 +16,37 @@ int fileNameCount;
 //the working directory inode number is the ROOTINODE at the 
 // beginning of things....
 int workingDirectoryInodeNumber;
+/* Initialize the linkedIntList */
+LinkedIntList* isInodeFreeHead=NULL;
+LinkedIntList* isBlockFreeHead=NULL;
+LinkedIntList* isInodeFreeTail=NULL; //= malloc( sizeof(LinkedIntList));
+LinkedIntList* isBlockFreeTail=NULL; // = malloc( sizeof(LinkedIntList));
 
 
 /* Function declarations */
+//for general linked list
 void insertIntoLinkedIntList(LinkedIntList *node, LinkedIntList **head, LinkedIntList **tail);
 LinkedIntList* get(int index, LinkedIntList *head);
 void printLinkedList(int level, char *where, LinkedIntList* head);
+
+//for inode and block
+int getFreeInode();
+
 //end of function declarations
+
+
+/* Implementations */
+
+int getFreeInode(){
+	LinkedIntList * node = isInodeFreeHead;
+	while(node != NULL){
+		  if(node->isFree == FREE){
+			    return node->index;
+		  }
+		  node = node->next;
+	}
+	return -1;
+}
 //begin of linked list methods
 void insertIntoLinkedIntList(LinkedIntList* node, LinkedIntList** head, LinkedIntList** tail){
         if(*head == NULL){ //change to NULL later
@@ -232,12 +256,7 @@ void calculateFreeBlocksAndInodes()
 	struct fs_header *fsHeader = (struct fs_header *) buf;
 	int numInodes = fsHeader->num_inodes;
 	int numBlocks = fsHeader->num_blocks; 
-	/* Initialize the linkedIntList */
-	LinkedIntList* isInodeFreeHead=NULL;
-	LinkedIntList* isBlockFreeHead=NULL;
-	LinkedIntList* isInodeFreeTail=NULL; //= malloc( sizeof(LinkedIntList));
-	LinkedIntList* isBlockFreeTail=NULL; // = malloc( sizeof(LinkedIntList));
-
+	
 	int i;
 	TracePrintf( level, "[Testing @ %s]: Free Inodes %d:\n", where, numInodes );
 	for( i = 0; i < numInodes; i++ )
@@ -661,7 +680,7 @@ int createFile( char *pathname, int pathNameLen )
 	{
 		//file not found, make a new file
 		//create a newInode for the new file
-		int newInodeNum = 2; //allocate inode num 
+		int newInodeNum = getFreeInode(); //allocate inode num 
 		struct inode *inode = readInode(newInodeNum);
 		inode -> type = INODE_REGULAR;
 		inode -> nlink = 1; 
@@ -761,10 +780,10 @@ void addressMessage( int pid, struct Message *msg )
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message OPEN: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 		
 			//TODO:OPEN
-			openFileOrDir(pathname, len);
+			msg->inode = openFileOrDir(pathname, len);
 			break;
 		case CREATE:
-			createFile( pathname, len );
+			msg->inode = createFile( pathname, len );
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CREATE: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case UNLINK:
