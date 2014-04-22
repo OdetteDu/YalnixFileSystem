@@ -12,10 +12,16 @@ char *pathname;
 char fileName[DIRNAMELEN];
 int fileNameCount;
 
+
+//the working directory inode number is the ROOTINODE at the 
+// beginning of things....
+int workingDirectoryInodeNumber;
+
+
 /* Function declarations */
 void insertIntoLinkedIntList(LinkedIntList *node, LinkedIntList **head, LinkedIntList **tail);
 LinkedIntList* get(int index, LinkedIntList *head);
-
+void printLinkedList(int level, char *where, LinkedIntList* head);
 //end of function declarations
 //begin of linked list methods
 void insertIntoLinkedIntList(LinkedIntList* node, LinkedIntList** head, LinkedIntList** tail){
@@ -56,7 +62,7 @@ void printLinkedList(int level, char *where, LinkedIntList* head){
 //end of linked list methods
 
 
-
+/* Utility functions for printing fs */
 void printInode( int level, char *where, struct inode *inode )
 {
 	//Print basic information about an inode
@@ -141,10 +147,12 @@ void printDisk( int level, char *where )
 			}
 		}
 	}
-
+	free(buf);
 	TracePrintf( level, "\n" );
 }
+/* End of utility functions for printing */
 
+/* Begin helper methods for yfs server io calls */
 //mark used blocks used by inode
 int markUsedBlocks( struct inode *inode, LinkedIntList *isBlockFreeHead )
 {
@@ -193,13 +201,13 @@ int markUsedBlocks( struct inode *inode, LinkedIntList *isBlockFreeHead )
 				get(blockIndex, isBlockFreeHead)->isFree= USED;
 			}
 			TracePrintf( level, "\n" );
-
+			free(buf);
 		}
 		return USED;
 	}
 }
 
-
+//this is used for initilizing the file system
 void calculateFreeBlocksAndInodes()
 {
 	int level = 1000;
@@ -209,6 +217,9 @@ void calculateFreeBlocksAndInodes()
 	//Read block 1
 	char *buf;
 	buf = malloc( sizeof(char) * SECTORSIZE );
+	if(buf == NULL) {
+		   TracePrintf(level, "[Testing @ %s]: malloc failure for buf\n", where);
+	}
 	int readIndirectBlockStatus;
 	readIndirectBlockStatus = ReadSector( 1, buf );
 	if( readIndirectBlockStatus != 0 )
@@ -221,13 +232,7 @@ void calculateFreeBlocksAndInodes()
 	struct fs_header *fsHeader = (struct fs_header *) buf;
 	int numInodes = fsHeader->num_inodes;
 	int numBlocks = fsHeader->num_blocks; 
-/*	int *isInodeFree = malloc( sizeof(int) * numInodes );
-=======
-	int numBlocks = fsHeader->num_blocks;
-	int *isInodeFree = malloc( sizeof(int) * numInodes );
->>>>>>> 144d5d9390f9a0124eb0dba0db78b50a2de3128d
-	int *isBlockFree = malloc( sizeof(int) * numBlocks );
-*/
+	/* Initialize the linkedIntList */
 	LinkedIntList* isInodeFreeHead=NULL;
 	LinkedIntList* isBlockFreeHead=NULL;
 	LinkedIntList* isInodeFreeTail=NULL; //= malloc( sizeof(LinkedIntList));
@@ -321,6 +326,9 @@ void calculateFreeBlocksAndInodes()
 		TracePrintf( level, "%d:%d\n", i, get(i,isBlockFreeHead)->isFree );
 	}
 	TracePrintf( level, "\n" );
+
+	/* Free the malloced item */
+	free(buf);
 }
 
 int calculateNumBlocksUsed( int size )
@@ -337,12 +345,14 @@ int calculateNumBlocksUsed( int size )
 	}
 }
 
+/* Given an inodeNumber return a block number */
 int getBlockNumInodeIn( int inodeNum )
 {
 	TracePrintf(400, "[Testing @ yfs.c @ getWhichBlockInodeIn]: inode (%d) is in block (%d)\n", inodeNum, inodeNum/(BLOCKSIZE/INODESIZE)+1);
 	return inodeNum/(BLOCKSIZE/INODESIZE)+1; 
 }
 
+/* GIven an inodeNumber return a inode index in the block */
 int getInodeIndexWithinBlock(int inodeNum)
 {
 	int inodeIndex = inodeNum % (BLOCKSIZE/INODESIZE); 
@@ -350,6 +360,7 @@ int getInodeIndexWithinBlock(int inodeNum)
 	return inodeIndex;
 }
 
+/* Read and write for block */
 char* readBlock( int blockNum )
 {
 	char *buf;
@@ -359,7 +370,7 @@ char* readBlock( int blockNum )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ readBlock]: Read block %d unsuccessfully\n", blockNum );
 	}
-
+	//TODO: free buf at any call to readBlock after use
 	return buf;
 }
 
@@ -375,12 +386,20 @@ int writeBlock( int blockNum, char *buf)
 	return 0;
 }
 
+/* Read and write for inode */
 struct inode* readInode( int inodeNum )
 {
 	int blockNum = getBlockNumInodeIn(inodeNum);
 
 	char *buf = readBlock(blockNum);
 	int inodeIndex = getInodeIndexWithinBlock(inodeNum);  
+
+	//TODO: should do some mem copy instead of directly using buf here
+	// THIS WILL CAUSE MEMORY LEAK
+	// NEED TO FIX LATER
+	// malloc inode
+	// free(buf)
+	// memcpy(inode, buf, blocksize - inodeindex);
 	struct inode *inode = (struct inode *)buf + inodeIndex;
 	TracePrintf( 400, "[Testing @ yfs.c  @ readInode]: inode(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink, inode->size, inode->indirect );
 	return inode;
@@ -396,6 +415,8 @@ struct inode* writeInode( int inodeNum, struct inode *newInode )
 	struct inode *inode = (struct inode *)buf + inodeIndex;
 	TracePrintf( 400, "[Testing @ yfs.c  @ writeInode]: inode after write(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink, inode->size, inode->indirect );
 	writeBlock(blockNum, buf);
+//TODO: CHECK MEMROY HERE
+	free(buf);
 	return inode;
 }
 
@@ -541,7 +562,7 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 {
 	//need to check if read inode successfully, such as make sure inodeNum is in correct bound
 	struct inode *inode = readInode(inodeNum);
-	int *usedBlocks = 0;//remember to free this thing somewhere later
+	int *usedBlocks = malloc(sizeof(int));//remember to free this thing somewhere later
 
 	//need to check if get used blocks successfully, the inode may be a free inode
 	int usedBlocksCount = getUsedBlocks(inode, &usedBlocks);
@@ -627,7 +648,7 @@ int createFile( char *pathname, int pathNameLen )
 	}
 
 	//read directoryInodeNum
-	int fileInodeNum = readDirectory(ROOTINODE, fileName, fileNameCount);//TODO, not always ROOTINODE
+	int fileInodeNum = readDirectory(workingDirectoryInodeNumber, fileName, fileNameCount);//TODO, not always ROOTINODE
 	if(fileInodeNum == 0)
 	{
 		//file not found, make a new file
@@ -652,7 +673,7 @@ int createFile( char *pathname, int pathNameLen )
 		}
 
 		TracePrintf( 350, "[Testing @ yfs.c @ CreateFile]: new dir_entry created: inum(%d), name(%s)\n", newDirEntry -> inum, newDirEntry -> name );
-		writeNewEntryToDirectory(ROOTINODE, newDirEntry);//TODO, not always ROOTINODE
+		writeNewEntryToDirectory(workingDirectoryInodeNumber, newDirEntry);//TODO, not always ROOTINODE
 	}
 	else
 	{
@@ -780,7 +801,7 @@ int main( int argc, char **argv )
 	{
 		TracePrintf( 0, "[Error @ yfs.main]: unsuccessfully register the YFS as the FILE_SERVER.\n" );
 	}
-
+	workingDirectoryInodeNumber = ROOTINODE;
 //	printDisk( 1500, "main.c" );
 	calculateFreeBlocksAndInodes();
 
