@@ -638,6 +638,8 @@ int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
 	return 0;
 }
 
+
+/* YFS Server calls corresponding to the iolib calls */
 int createFile( char *pathname, int pathNameLen )
 {
 	int directoryInodeNum = gotoDirectory( pathname, pathNameLen );
@@ -681,8 +683,15 @@ int createFile( char *pathname, int pathNameLen )
 	}
 	
 //	fileInodeNum = readDirectory(ROOTINODE, fileName, fileNameCount);//test purpose only, should be delete
-	return 0;
+	return fileInodeNum;
 }
+
+//Open file
+
+int openFile(char *pathname, int pathNameLen){
+	return 0; 
+}
+
 
 void addressMessage( int pid, struct Message *msg )
 {
@@ -792,6 +801,8 @@ void addressMessage( int pid, struct Message *msg )
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SHUTDOWN: type(%d)\n", type );
 			break;
 	}
+
+//	free(msg);
 }
 
 int main( int argc, char **argv )
@@ -801,6 +812,7 @@ int main( int argc, char **argv )
 	{
 		TracePrintf( 0, "[Error @ yfs.main]: unsuccessfully register the YFS as the FILE_SERVER.\n" );
 	}
+	//set the current workingDirectoryInodeNumber to be ROOTINODE
 	workingDirectoryInodeNumber = ROOTINODE;
 //	printDisk( 1500, "main.c" );
 	calculateFreeBlocksAndInodes();

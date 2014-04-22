@@ -105,11 +105,13 @@ extern int Open(char *pathname)
 	msg.len = length+1;//strlen(pathname); 
 
 	TracePrintf(500, "before blocked from send\n");
-	int send = Send((void *)&msg, FILE_SERVER);
-	if( send != 0 )
+	int fileInode = Send((void *)&msg, FILE_SERVER);
+	if( fileInode == ERROR )
 	{
 		TracePrintf(0, "[Error @ iolib.h @ Open]: The send status is Error.\n");
 	}
+
+	openFileTable[newfd].inode = fileInode;//record the inode number of the open file
 	
 	TracePrintf(500, "Unblocked from send\n");
 	free(pathCopy);
@@ -154,12 +156,14 @@ extern int Create(char *pathname)
 	msg.pathname = pathCopy;
 	msg.len = length+1; 
 
-	int send = Send((void *)&msg, FILE_SERVER);
-	if( send != 0 )
+	int fileinode = Send((void *)&msg, FILE_SERVER);
+	if( fileinode == ERROR )
 	{
 		TracePrintf(0, "[Error @ iolib.h @ Create]: The send status is Error.\n");
 	}
+	openFileTable[newfd].inode = fileinode;
 	free(pathCopy);
+
 	return newfd;	
 }
 
