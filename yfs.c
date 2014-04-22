@@ -41,7 +41,8 @@ int getFreeInode(){
 	LinkedIntList * node = isInodeFreeHead;
 	while(node != NULL){
 		  if(node->isFree == FREE){
-			    return node->index;
+			  node->isFree = USED;
+			  return node->index;
 		  }
 		  node = node->next;
 	}
