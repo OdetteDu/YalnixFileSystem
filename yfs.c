@@ -835,6 +835,28 @@ int chDir(char *pathname, int pathNameLen){
 	return ERROR;
 
 }
+
+//remove a directory
+int rmDir(char* pathname, int pathNameLen){
+	int lastExistingDir;
+	int directoryInodeNum = gotoDirectory(pathname, pathNameLen, &lastExistingDir);
+
+	if(directoryInodeNum == ERROR){
+		  TracePrintf(0, "[Error @ yfs.c @ rmDir]: directoryInodeNum is Error: pathname: %s, filename: %s\n", pathname, fileName);
+		  return ERROR;
+	}
+
+	if(fileNameCount == 0){
+		  //lastExistingDir is what we want to remove
+
+	}
+
+	return 0;
+
+}
+
+/* End of yfs server calls */
+
 void addressMessage( int pid, struct Message *msg )
 {
 	int type = msg->messageType;
