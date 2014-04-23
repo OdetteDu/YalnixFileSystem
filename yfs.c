@@ -756,15 +756,39 @@ int mkDir(char * pathname, int pathNameLen){
 		return ERROR;
 	}
 
-	if( fileNameCount == 0){
-		  //this means the directory already exists;
-		  return ERROR;
-	}else{
 	TracePrintf(0, "[Testing @ yfs.c @ mkDir]: try to make directory full path: %s, actual path needs to be created: %s\n", pathname, fileName);
 		//fileName is the directory we need to create:
-		
-	}
+	int fileInodeNum = readDirectory(lastExistingDir, fileName, fileNameCount);	
+	if(fileInodeNum == 0)
+	{
+		//file not found, make a new file
+		//create a newInode for the new file
+		int newInodeNum = getFreeInode(); //allocate inode num 
+		struct inode *inode = readInode(newInodeNum);
+		inode -> type = INODE_DIRECTORY;
+		inode -> nlink = 1; 
+		inode -> size = 0;
+		writeInode(newInodeNum, inode);	
 
+		//create a new dir_entry for the new file
+		struct dir_entry *newDirEntry;
+		newDirEntry = malloc(sizeof(struct dir_entry));
+		newDirEntry -> inum = newInodeNum;
+
+		//this part may be substituted by a c libaray function
+		int i;
+		for(i = 0; i<DIRNAMELEN; i++)
+		{
+			newDirEntry -> name[i] = fileName[i];
+		}
+
+		TracePrintf( 0, "[Testing @ yfs.c @ CreateFile]: new dir_entry created: inum(%d), name(%s)\n", newDirEntry -> inum, newDirEntry -> name );
+		writeNewEntryToDirectory(directoryInodeNum, newDirEntry);//TODO, not always ROOTINODE
+	}
+	else
+	{	
+	TracePrintf(0, "[Testing @ yfs.c @ mkDir]: try to make directory full path: %s, actual path needs to be created: %s\n", pathname, fileName);
+	}
 	return 0;
 }
 
@@ -939,7 +963,11 @@ int main( int argc, char **argv )
 	workingDirectoryInodeNumber = ROOTINODE;
 //	printDisk( 1500, "main.c" );
 	calculateFreeBlocksAndInodes();
+	
 
+	//set all char in fileName \0, 
+	//TODO: check understanding
+	memset(fileName, '\0', DIRNAMELEN);
 	int pid = Fork();
 	if( pid == 0 )
 	{
