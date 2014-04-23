@@ -26,6 +26,7 @@
 struct Message
 {
 	int messageType;
+	int returnStatus;
 	int inode;
 	int len; //currentPos
 	int size;

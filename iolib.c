@@ -300,6 +300,21 @@ extern int MkDir(char *pathname)
 	return 0;	
 }
 
+extern int ChDir(char *pathname)
+{
+	struct Message msg;
+	msg.messageType = CHDIR;
+	msg.pathname = pathname;
+	msg.len = strlen(pathname); 
+
+	int send = Send((void *)&msg, FILE_SERVER);
+	if( send != 0 )
+	{
+		TracePrintf(0, "[Error @ iolib.h @ ChDir]: The send status is Error.\n");
+	}
+	return 0;
+	}
+
 extern int RmDir(char *pathname)
 {
 	struct Message msg;
