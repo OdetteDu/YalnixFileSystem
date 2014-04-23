@@ -564,7 +564,10 @@ int gotoDirectory( char *pathname, int pathNameLen, int* lastExistingDir)
 				
 				//Change the lastExistingDir inumber
 				(*lastExistingDir) = readDirectory(*lastExistingDir, fileName, fileNameCount);
-
+				if(*lastExistingDir == 0){
+					TracePrintf(300, "[Error @ yfs.c @ gotoDirectory]: path contains : (%s), it is not a directory\n", fileName);  
+					return ERROR;
+				}
 				fileNameCount = 0;
 				for( j = 0; j < DIRNAMELEN; j++ )
 				{
@@ -632,7 +635,7 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 	}
 	free(usedBlocks);
 	//free(inode);
-	return 0;
+	return 0;//meaning unfound
 }
 
 int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
@@ -690,7 +693,7 @@ int createFile( char *pathname, int pathNameLen )
 	//read directoryInodeNum
 	//	int fileInodeNum = readDirectory(workingDirectoryInodeNumber, fileName, fileNameCount);//TODO, not always ROOTINODE
 	
-	int fileInodeNum = readDirectory(directoryInodeNum, fileName, fileNameCount);//TODO, not always ROOTINODE
+	int fileInodeNum = readDirectory(lastExistingDir, fileName, fileNameCount);//TODO, not always ROOTINODE
 	if(fileInodeNum == 0)
 	{
 		//file not found, make a new file
@@ -715,13 +718,26 @@ int createFile( char *pathname, int pathNameLen )
 		}
 
 		TracePrintf( 0, "[Testing @ yfs.c @ CreateFile]: new dir_entry created: inum(%d), name(%s)\n", newDirEntry -> inum, newDirEntry -> name );
-		writeNewEntryToDirectory(directoryInodeNum, newDirEntry);//TODO, not always ROOTINODE
+		writeNewEntryToDirectory(lastExistingDir, newDirEntry);//TODO, not always ROOTINODE
 	}
 	else
 	{
-		//file found, empty the file 
+		//TODO: Test this part
+		//file found, empty the file
+		//only tuncate if this file is INODE_REGULAR
+		struct inode *inode = readInode(fileInodeNum);
+		if(inode->type != INODE_REGULAR){
+			TracePrintf(0, "[Error @ yfs.c @ CreateFile]: file %s exists and is not writable\n", fileName);
+
+			return ERROR;
+		}
+		//TODO: free all the used blocks!!
+		
 	}
-	
+
+	//TODO: clean up fileName and fileNameCount
+	fileNameCount = 0;
+
 //	fileInodeNum = readDirectory(ROOTINODE, fileName, fileNameCount);//test purpose only, should be delete
 	return fileInodeNum;
 }
