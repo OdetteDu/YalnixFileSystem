@@ -13,7 +13,7 @@ struct OpenFileEntry
 	int isOpen;
 	int inode;
 	int currentPos;
-	int status;
+//	int status;
 };
 
 struct OpenFileEntry openFileTable[MAX_OPEN_FILES];
@@ -21,7 +21,7 @@ struct OpenFileEntry openFileTable[MAX_OPEN_FILES];
 /* Function declarations */
 int isFileDescriptorLegal( int fd );
 int getFreeFD( void );
-int checkFileOpen( int fd );
+//int checkFileOpen( int fd );
 int getPathnameLength( char *buf );
 
 /* Start of implementation */
@@ -40,15 +40,15 @@ int getFreeFD()
 	return ERROR; //did not find a free fd
 }
 
-int checkFileOpen( int fd )
-{
-	//presumably the fd is the index of the file entry in our static array
-	if( openFileTable[fd].isOpen == 1 )
-		return fd;
-
-	TracePrintf( 0, "[Error @ iolib.c @ checkFileOpen]: Given fd(%d) isOpen parameter unset\n", fd );
-	return ERROR;
-}
+//int checkFileOpen( int fd )
+//{
+//	//presumably the fd is the index of the file entry in our static array
+//	if( openFileTable[fd].isOpen == 1 )
+//		return fd;
+//
+//	TracePrintf( 0, "[Error @ iolib.c @ checkFileOpen]: Given fd(%d) isOpen parameter unset\n", fd );
+//	return ERROR;
+//}
 
 /* checks if the path name given exceeds the maximum path name length */
 int getPathnameLength( char *buf )
@@ -118,11 +118,12 @@ extern int Open( char *pathname )
 	if( send == ERROR )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ Open]: The send status is Error.\n" );
+		return ERROR;
 	}
 
 	openFileTable[newfd].inode = msg.inode;	//record the inode number of the open file
 	TracePrintf( 0, "[Testing @ iolib.c @ Open]: opened the file with inode number: %d\n", msg.inode );
-	TracePrintf( 0, "[ iolib.c @ Open] : Unblocked from send\n" );
+	TracePrintf( 0, "[Testing @ iolib.c @ Open] : Unblocked from send\n" );
 	free( pathCopy );
 	return newfd;
 }
@@ -170,6 +171,7 @@ extern int Create( char *pathname )
 	if( send == ERROR )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ Create]: The send status is Error.\n" );
+		return ERROR;
 	}
 	openFileTable[newfd].inode = msg.inode;
 
@@ -197,6 +199,7 @@ extern int Read( int fd, void *buf, int size )
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ Read]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
@@ -218,13 +221,74 @@ extern int Write( int fd, void *buf, int size )
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
 	{
-		TracePrintf( 0, "[Error @ iolib.h @ Write]: The send status is Error.\n" );
+		TracePrintf( 0, "[Error @ iolib.c @ Write]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
 
 extern int Seek( int fd, int offset, int whence )
 {
+	if(isFileDescriptorLegal(fd) == ERROR)
+	{
+		TracePrintf(0, "[Error @ iolib.c @ Seek]: The fd: %d is not legal, MAX_OPEN_FILES: %d\n", fd, MAX_OPEN_FILES);
+		return ERROR;
+	}
+
+	struct OpenFileEntry *ofe = &openFileTable[fd]; 
+	int inodeNum = ofe -> inode;
+	int currentPos = ofe -> currentPos;
+
+	struct Message msg;
+	msg.messageType = SEEK;
+	msg.inode = inodeNum;
+
+	int send = Send( (void *) &msg, FILE_SERVER );
+	if( send != 0 )
+	{
+		TracePrintf( 0, "[Error @ iolib.h @ Seek]: The send status is Error.\n" );
+		return ERROR;
+	}
+
+	int fileSize = msg.size;
+	TracePrintf(200, "[Testing @ iolib.h @ Seek]: The file size is %d\n", fileSize);
+
+	if(whence == SEEK_SET)
+	{
+		if(offset < 0 || offset > fileSize)
+		{
+			TracePrintf( 0, "[Error @ iolib.h @ Seek]: The offset: %d is Error when fileSize: %d, whence: SEEK_SET.\n", offset, fileSize );
+			return ERROR;
+		}
+		ofe -> currentPos = offset;
+	}
+	else if(whence == SEEK_CUR)
+	{
+		int newPos = currentPos + offset;
+		if(newPos < 0 || newPos > fileSize)
+		{
+			TracePrintf( 0, "[Error @ iolib.h @ Seek]: The offset: %d is Error when fileSize: %d, whence: SEEK_CUR, newPos: %d.\n", offset, fileSize, newPos );
+			return ERROR;
+		}
+		ofe -> currentPos = newPos; 
+	}
+	else if(whence == SEEK_END)
+	{
+		if(offset > 0 || offset > fileSize)
+		{
+			TracePrintf( 0, "[Error @ iolib.h @ Seek]: The offset: %d is Error when fileSize: %d, whence: SEEK_END.\n", offset, fileSize );
+			return ERROR;
+		}
+		ofe -> currentPos = fileSize + offset;
+	}
+	else
+	{
+		TracePrintf( 0, "[Error @ iolib.h @ Seek]: The whence is Error: %d.\n", whence );
+		return ERROR;
+	}
+	
+	TracePrintf( 0, "[Testing @ iolib.h @ Seek]: Finish Seeking: offset: %d, fileSize: %d, whence: %d, newPos: %d = %d.\n", offset, fileSize, whence, ofe -> currentPos, openFileTable[fd].currentPos );
+
 	return 0;
 }
 
@@ -241,6 +305,7 @@ extern int Link( char *oldname, char *newname )
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ Link]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
@@ -256,6 +321,7 @@ extern int Unlink( char *pathname )
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ Unlink]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
@@ -273,6 +339,7 @@ extern int SymLink( char *oldname, char *newname )
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ SymLink]: The send status is Error.\n" );
+		return ERROR;
 	}
 
 	return 0;
@@ -291,6 +358,7 @@ extern int ReadLink( char *pathname, char *buf, int size )
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ ReadLink]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
@@ -306,6 +374,7 @@ extern int MkDir( char *pathname )
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ MkDir]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
@@ -321,6 +390,7 @@ extern int ChDir( char *pathname )
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ ChDir]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
@@ -336,6 +406,7 @@ extern int RmDir( char *pathname )
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ RmDir]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
@@ -353,6 +424,7 @@ extern int Stat( char *pathname, struct Stat *statbuf )
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ Stat]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
@@ -366,6 +438,7 @@ extern int Sync()
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ Sync]: The send status is Error.\n" );
+		return ERROR;
 	}
 	return 0;
 }
@@ -379,6 +452,7 @@ extern int Shutdown()
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ Shutdown]: The send status is Error.\n" );
+		return ERROR;
 	}
 
 	TracePrintf( 500, "[Testing @ iolib.h @ Shutdown]: Reply: messageType(%d)\n", msg.messageType );
