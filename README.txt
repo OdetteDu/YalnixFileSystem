@@ -1,5 +1,21 @@
 By Yang Du, Bing Xue
 
+**************************
+
+Update:
+
+TODO:
+
+1. Need to pass working directory of user in msg
+2. Need to add linking info in msg
+3. Need to chagen gotoDirectory to receive working directory as arguement for
+relative path 
+4. Need to free all Inode read from readInode ####
+5. Need to update nlink in mkDir
+
+6. Need to link chDir back to user
+
+7. fileName is not freed in all cases
 ***************************
 
 TODO:

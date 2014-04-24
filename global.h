@@ -35,7 +35,7 @@ struct Message
 };
 
 typedef struct linkedIntList{
-	int isFree;
+	int num;
 	struct linkedIntList *next;
 	int index; 
 }LinkedIntList;

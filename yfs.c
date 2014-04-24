@@ -34,22 +34,65 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen );
 //end of function declarations
 
 /* Implementations */
-
+int getFreeBlock(){
+	  LinkedIntList* toPop = isBlockFreeHead;
+	  isBlockFreeHead = isBlockFreeHead->next;
+	  //TODO: CHECK NULL
+	  int num = toPop->num;
+	  free(toPop);
+	  return num;
+}
 int getFreeInode()
 {
-	LinkedIntList * node = isInodeFreeHead;
-	while( node != NULL )
-	{
-		if( node->isFree == FREE )
-		{
-			node->isFree = USED;
-			return node->index;
-		}
-		node = node->next;
+	LinkedIntList* toPop = isInodeFreeHead;
+	isInodeFreeHead = isInodeFreeHead->next;
+	if(isInodeFreeHead == NULL){
+		  TracePrintf(0, "[Error @ yfs.c @ getFreeInode()]: no free inode left\n");
 	}
-	return -1;
+	int num = toPop->num;
+	free(toPop);
+	return num;
 }
-//begin of linked list methods
+void addToFreeBlockList(int blockNum){
+	TracePrintf(300, "[Testing @ yfs.c @ addToFreeBlockList] adding %d\n", blockNum);
+	LinkedIntList* toadd = malloc(sizeof(LinkedIntList));
+	  toadd->num = blockNum;
+	  if(isBlockFreeHead == NULL){
+		    isBlockFreeHead = toadd;
+			isBlockFreeTail = toadd;
+			isInodeFreeHead->next = NULL;
+	  }else if(isBlockFreeHead == isBlockFreeTail){
+		    isBlockFreeTail = toadd;
+			isBlockFreeTail->next = NULL;
+			isBlockFreeHead->next = isBlockFreeTail;
+	  }else{
+		    isBlockFreeTail->next = toadd;
+			toadd->next = NULL;
+			isBlockFreeTail = toadd;
+	  }
+}
+void addToFreeInodeList(int inodeNum){
+
+	TracePrintf(300, "[Testing @ yfs.c @ addToFreeInodeList] adding %d\n", inodeNum);
+	LinkedIntList* toadd = malloc(sizeof(LinkedIntList));
+	  toadd->num = inodeNum;
+	  if(isInodeFreeHead == NULL){
+		    isInodeFreeHead = toadd;
+			isInodeFreeTail = toadd;
+			isInodeFreeHead->next = NULL;
+	  }else if(isInodeFreeHead == isInodeFreeTail){
+			isInodeFreeTail = toadd;
+			isInodeFreeTail->next = NULL;
+		    isInodeFreeHead->next = isInodeFreeTail;
+	  }else{
+		  isInodeFreeTail->next = toadd;
+		  toadd->next = NULL;
+		  isInodeFreeTail = toadd;
+	  }
+}
+
+
+//begin of linke list methods
 void insertIntoLinkedIntList( LinkedIntList* node, LinkedIntList** head, LinkedIntList** tail )
 {
 	if( *head == NULL )
@@ -91,8 +134,7 @@ void printLinkedList( int level, char *where, LinkedIntList* head )
 	LinkedIntList* toPrint = head;
 	while( toPrint != NULL )
 	{
-		TracePrintf( level, "[Testing @ %s]: LinkedIntListNode at %p, next at %p, isFree(%d), index(%d)\n", toPrint, toPrint->next, toPrint->isFree,
-				toPrint->index );
+		TracePrintf( level, "[Testing @ %s]: LinkedIntListNode at %p, num %d, next at %p\n", toPrint, toPrint->num, toPrint->next );
 		toPrint = toPrint->next;
 	}
 
@@ -268,7 +310,7 @@ void calculateFreeBlocksAndInodes()
 
 	int i;
 	TracePrintf( level, "[Testing @ %s]: Free Inodes %d:\n", where, numInodes );
-	for( i = 0; i < numInodes; i++ )
+	for( i = 7; i < numInodes; i++ )
 	{
 		isInodeFree[i] = FREE;
 	}
@@ -294,6 +336,11 @@ void calculateFreeBlocksAndInodes()
 		}
 
 		isInodeFree[inodeIndex] = inodeFree;
+
+		if(inodeFree== FREE){
+			  //add to the freeList
+			  addToFreeInodeList(inodeIndex);
+		}
 		TracePrintf( level, "[Testing @ %s]: inode %d 's status is %d\n", where, inodeIndex, inodeFree );
 		inodeIndex++;
 	}
@@ -318,6 +365,10 @@ void calculateFreeBlocksAndInodes()
 					TracePrintf( 0, "[Error @ %s ]: Read indirect block %d unsuccessfully\n", where, inodeIndex );
 				}
 				isInodeFree[inodeIndex] = inodeFree;
+				if(inodeFree== FREE){
+				  //add to the freeList
+				 addToFreeInodeList(inodeIndex);
+				}
 				TracePrintf( level, "[Testing @ %s]: inode %d 's status is %d\n", where, inodeIndex, inodeFree );
 				inodeIndex++;
 			}
@@ -582,9 +633,9 @@ int gotoDirectory( char *pathname, int pathNameLen, int* lastExistingDir, int * 
 		}
 		else
 		{
-//			TracePrintf( 500, "[Testing @ yfs.c @ gotoDirectory]: writing c\n");
-			( *fileName)[ *fileNameCount] = c;
-			( *fileNameCount)++;
+			TracePrintf( 500, "[Testing @ yfs.c @ gotoDirectory]: writing c\n");
+			(*fileName)[*fileNameCount] = c;
+			(*fileNameCount)++;
 			if( *fileNameCount >= DIRNAMELEN )
 			{
 				TracePrintf( 0, "[Error @ yfs.c @ gotoDirectory]: file name length exceeds DIRNAMELEN:(%s)\n", *fileName );
@@ -697,6 +748,7 @@ int createFile( char *pathname, int pathNameLen )
 	if( directoryInodeNum == ERROR )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ CreateFile]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
+		free(fileName);
 		return ERROR;
 	}
 
@@ -719,7 +771,7 @@ int createFile( char *pathname, int pathNameLen )
 		struct dir_entry *newDirEntry;
 		newDirEntry = malloc( sizeof(struct dir_entry) );
 		newDirEntry->inum = newInodeNum;
-
+		fileInodeNum = newInodeNum;
 		//this part may be substituted by a c libaray function
 		memcpy( newDirEntry->name, fileName, DIRNAMELEN );
 
@@ -755,9 +807,7 @@ int openFileOrDir( char *pathname, int pathNameLen )
 {
 	int lastExistingDir;
 	int fileNameCount = 0;
-	char *fileName = malloc( sizeof(char) * DIRNAMELEN );
-	memset( fileName, '\0', DIRNAMELEN );
-	memset( fileName, '\0', DIRNAMELEN );
+	char *fileName = malloc( sizeof(char) * DIRNAMELEN);
 	//fill in fileName and fileName count;
 	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
 	if( directoryInodeNum == ERROR )
@@ -767,8 +817,12 @@ int openFileOrDir( char *pathname, int pathNameLen )
 
 	}
 
-	int fileInodeNum = readDirectory( directoryInodeNum, fileName, fileNameCount );
+	TracePrintf( 0, "[Testing @ yfs.c @ openFileOrDir] fullpath requested(%s), need(%s), requesting\n", pathname, fileName );
+	int fileInodeNum = readDirectory(lastExistingDir, fileName, fileNameCount );
 
+	TracePrintf( 0, "[Testing @ yfs.c @ openFileOrDir] inodeNum(%d), fullpath requested(%s), need(%s), requesting\n", fileInodeNum,pathname, fileName );
+	
+	free(fileName);
 	return fileInodeNum;
 }
 // Make a directory
@@ -777,9 +831,9 @@ int mkDir( char * pathname, int pathNameLen )
 {
 
 	TracePrintf( 0, "[Testing @ yfs.c @ mkDir] Entering Mkdir, requesting %s\n", pathname );
-	int fileNameCount;
 	char *fileName = malloc( sizeof(char) * DIRNAMELEN );
 	memset( fileName, '\0', DIRNAMELEN );
+	int fileNameCount;
 
 	int lastExistingDir;
 	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
@@ -844,7 +898,6 @@ int mkDir( char * pathname, int pathNameLen )
 			TracePrintf( 0, "[Testing @ yfs.c @ mkDir]: added .. to the dir we create at %s \n", fileName );
 			writeNewEntryToDirectory( newInodeNum, newDirEntry );
 			free( newDirEntry );
-			free( fileName );
 			return 0;
 		}
 		else
@@ -856,7 +909,6 @@ int mkDir( char * pathname, int pathNameLen )
 
 	fileNameCount = 0;
 	//memset(fileName, '\0', DIRNAMELEN);
-	free( fileName );
 	return 0;
 
 }
