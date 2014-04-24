@@ -1165,6 +1165,22 @@ int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
 		//need to expand the file
 		int numBlocksNeedToAllocate = newNumBlockNeeded - currentNumBlockNeeded;
 		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need to expand the file by %d blocks: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", numBlocksNeedToAllocate, currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
+
+		if(newNumBlockNeeded <= NUM_DIRECT)
+		{
+			int i;
+			for(i=currentNumBlockNeeded; i<newNumBlockNeeded; i++)
+			{
+				inode -> direct[i] = getFreeBlock(); 
+			}
+			inode -> size = newFileSize;
+			writeInode(inodeNum, inode);
+			printInode(200, inodeNum, "writeFile", inode);
+		}
+		else
+		{
+			TracePrintf(0, "[NIY @ yfs.c @ writeFile]: Need to expand to indirect block\n");
+		}
 	}
 	else if(currentNumBlockNeeded > newNumBlockNeeded)
 	{
