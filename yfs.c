@@ -736,8 +736,10 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 		index = 0;
 	}
 	free( usedBlocks );
+	free(inode);
 	return ERROR;		//meaning unfound
-}
+
+	}
 
 int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
 {

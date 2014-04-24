@@ -7,8 +7,8 @@
 int main(int argc, char **argv)
 {
 	printf("Hello, World!\n");
-	//int fd = Create("/odette");
-	//MkDir("simple_link");
+	int fd = Create("/odette");
+	MkDir("simple_link");
 	ChDir("simple_link");
 	Link("/odette", "simple_link/link_it");
 	TracePrintf(500, "return from open\n");
