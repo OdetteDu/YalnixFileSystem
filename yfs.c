@@ -1148,6 +1148,8 @@ int main( int argc, char **argv )
 	//set all char in fileName \0, 
 	//TODO: check understanding
 //	memset(fileName, '\0', DIRNAMELEN);
+
+	/*
 	int pid = Fork();
 	if( pid == 0 )
 	{
@@ -1173,6 +1175,7 @@ int main( int argc, char **argv )
 			
 		}
 	}
+	*/
 
 	return 0;
 }
