@@ -754,9 +754,28 @@ int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
 		for(i=0; i<NUM_DIRECT; i++){
 			  if(inode->direct[i]==0){
 				    inode->direct[i] = getFreeBlock();
+					if(inode->direct[i] == ERROR){
+						  TracePrintf(0, "[Testing @ yfs.c @ writeNewEntryToDirectory]: failed to allocate a new block\n");
+						  return ERROR;
+					}
+					TracePrintf(0, "[Testing @ yfs.c @ writeNewENtryToDirectory]: allocated new block at %d\n", inode->direct[i]);
 					break;
 			  }
 		}
+		char *buf = readBlock(inode->direct[i]);
+		memcpy((struct dir_entry*)buf, newDirEntry, sizeof(struct dir_entry));
+		struct dir_entry *dirEntry = (struct dir_entry *) buf;
+		TracePrintf( 300, "[Testing @ yfs.c @ writeNewEntryToDirectory]: newblockNum (%d), index(%d), directory[%d]: inum(%d), name(%s)\n", inode->direct[i],
+				dirEntryIndex, dirEntryIndex, dirEntry->inum, dirEntry->name );
+		writeBlock(inode->direct[i], buf );
+
+		int originalSize = inode->size;
+		int newSize = originalSize + sizeof(struct dir_entry);
+		inode->size = newSize;
+		TracePrintf( 300, "Testin @ yfs.c @ writeNewEntryToDirectory]: originalSize: %d, newSize: %d\n", originalSize, newSize );
+		writeInode( inodeNum, inode );
+		free(inode);
+		free(buf);
 	}
 	else
 	{
@@ -776,13 +795,13 @@ int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
 		writeBlock( blockNum, buf );
 		free( usedBlocks );
 
-		struct inode *inode = readInode( inodeNum );
 		int originalSize = inode->size;
 		int newSize = originalSize + sizeof(struct dir_entry);
 		inode->size = newSize;
 		TracePrintf( 300, "Testin @ yfs.c @ writeNewEntryToDirectory]: originalSize: %d, newSize: %d\n", originalSize, newSize );
 		writeInode( inodeNum, inode );
 		free(inode);
+		free(buf);
 	}
 	//free
 	return 0;
@@ -794,7 +813,7 @@ int createFile( char *pathname, int pathNameLen )
 	int lastExistingDir;
 	char *fileName = malloc( sizeof(char) * DIRNAMELEN );
 	memset( fileName, '\0', DIRNAMELEN );
-	int fileNameCount;
+	int fileNameCount = 0;
 
 	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
 	if( directoryInodeNum == ERROR )
@@ -925,7 +944,6 @@ int mkDir( char * pathname, int pathNameLen )
 			inode->type = INODE_DIRECTORY;
 			inode->nlink = 2;
 			inode->size = 0;
-			inode->direct[0] = getFreeBlock();
 			writeInode( newInodeNum, inode );
 			//create a new dir_entry for the new file
 			struct dir_entry *newDirEntry;
@@ -946,7 +964,8 @@ int mkDir( char * pathname, int pathNameLen )
 			newDirEntry = malloc( sizeof(struct dir_entry) );
 			memset( newDirEntry->name, '\0', DIRNAMELEN );
 			memcpy( newDirEntry->name, ".", 1 );
-			TracePrintf( 0, "[Testing @ yfs.c @ mkDir]: added . to the dir we create at %s \n", fileName );
+			newDirEntry->inum = newInodeNum;
+			TracePrintf( 0, "[Testing @ yfs.c @ mkDir]: added (%s) to the dir we create at %s \n", newDirEntry->name, fileName);
 			writeNewEntryToDirectory( newInodeNum, newDirEntry );
 			free( newDirEntry );
 
@@ -958,6 +977,7 @@ int mkDir( char * pathname, int pathNameLen )
 			newDirEntry = malloc( sizeof(struct dir_entry) );
 			memset( newDirEntry->name, '\0', DIRNAMELEN );
 			memcpy( newDirEntry->name, "..", 2 );
+			newDirEntry->inum = lastExistingDir;
 			TracePrintf( 0, "[Testing @ yfs.c @ mkDir]: added .. to the dir we create at %s \n", fileName );
 			writeNewEntryToDirectory( newInodeNum, newDirEntry );
 			free( newDirEntry );
@@ -1065,7 +1085,7 @@ int chDir( char* pathname, int pathNameLen )
 int rmDir( char* pathname, int pathNameLen )
 {
 	int lastExistingDir;
-	int fileNameCount;
+	int fileNameCount = 0;
 	char *fileName = malloc( sizeof(char) * DIRNAMELEN );
 	memset( fileName, '\0', DIRNAMELEN );
 	memset( fileName, '\0', DIRNAMELEN );
@@ -1145,7 +1165,7 @@ int link( struct Message * msg )
 	//CopyFrom(newPathName, msg->newpathname);
 	int lastExistingDir;
 	char fileName[DIRNAMELEN];
-	int fileNameCount;
+	int fileNameCount = 0;
 
 	//int findDir = gotoDirectory(msg->curDir, oldPathName, (msg->oldpathname).length, &lastExistingDir, &fileNameCount, &fileName);
 	//if(findDir == 0){
