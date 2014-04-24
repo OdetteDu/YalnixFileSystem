@@ -1156,18 +1156,17 @@ int writeFile( int inode )
 
 }
 
-int link( struct Message * msg )
+int link(char *oldname, int oldnamelen, char* newname)
 {
 	//TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );	
-	int inodeNum;
-	char oldPathName[MAXPATHNAMELEN];
-	char newPathName[MAXPATHNAMELEN];
-	//CopyFrom(oldPathName, msg->oldpathname);
-	//CopyFrom(newPathName, msg->newpathname);
 	int lastExistingDir;
-	char fileName[DIRNAMELEN];
+	char *fileName = malloc(sizeof(char)*DIRNAMELEN);
 	int fileNameCount = 0;
+	TracePrintf(0, "[Testing @ yfs.c @ link]:Entering link, reqeusting oldname(%s), newname(%s)\n", oldname, newname);
 
+	int oldInodeNum = openFileOrDir(oldname, oldnamelen);
+
+	/* Need to check if new path already exists */
 	//int findDir = gotoDirectory(msg->curDir, oldPathName, (msg->oldpathname).length, &lastExistingDir, &fileNameCount, &fileName);
 	//if(findDir == 0){
 	//  //need to continue to search for file in the current dir
@@ -1349,10 +1348,12 @@ void addressMessage( int pid, struct Message *msg )
 
 			//TODO:OPEN
 			msg->inode = openFileOrDir( pathname, len );
+			free(pathname);
 			break;
 		case CREATE:
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CREATE: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			msg->inode = createFile( pathname, len );
+			free(pathname);
 			break;
 		case UNLINK:
 			//TODO: UNLINK
@@ -1364,17 +1365,20 @@ void addressMessage( int pid, struct Message *msg )
 			//TODO: MIDIR
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message MKDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			msg->returnStatus = mkDir( pathname, len );
+			free(pathname);
 			break;
 		case RMDIR:
 			//TODO: RMDIRi
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message RMDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			msg->returnStatus = rmDir( pathname, len );
+			free(pathname);
 			break;
 		case CHDIR:
 			//TODO: CHDIR
 
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CHDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			msg->returnStatus = chDir( pathname, len );
+			free(pathname);
 			break;
 		case STAT:
 			//TODO: STAT
@@ -1389,6 +1393,7 @@ void addressMessage( int pid, struct Message *msg )
 			//TODO: LINK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message LINK: type(%d), oldLen(%d), oldName(%s), newLen(%d), newName(%s)\n", type,
 					len, pathname, size, buf );
+			msg->returnStatus = link(pathname, len, buf);
 			break;
 		case SYMLINK:
 			//TODOZ: SYMLINK
