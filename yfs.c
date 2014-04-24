@@ -1085,7 +1085,7 @@ int chDir( char* pathname, int pathNameLen )
 }
 
 //remove a directory
-int rmDir( char* pathname, int pathNameLen )
+/*int rmDir( char* pathname, int pathNameLen )
 {
 	int lastExistingDir;
 	int fileNameCount = 0;
@@ -1143,6 +1143,71 @@ int rmDir( char* pathname, int pathNameLen )
 	free( fileName );
 	return 0;
 
+}*/
+
+int rmDir(char *pathname, int pathnamelen){
+	  
+	int openDir = openFileOrDir(pathname, pathnamelen);
+	if(openDir == ERROR){
+		  TracePrintf( 0, "[Error @ yfs.c @ rmDir]: failed to open directory (%s)\n", pathname);
+		  return ERROR;
+	}
+	struct inode * dir = readInode(openDir);
+	//If the pathname is a symlink, simply delete the symlink
+	if(dir->type == INODE_SYMLINK){
+		  //TODO: simple kill the symlink
+		  //unlink(pathname, pathnamelen);
+		  return 0;
+	}
+	
+	if(dir->type != INODE_DIRECTORY){
+		TracePrintf(0, "[Error @ yfs.c @ rmDir]: not a directory (%s)\n", pathname);
+		return ERROR;
+	}
+
+	dir->type = INODE_FREE;//set this node free;
+	dir->nlink = 0; //TODO: delete all the hard links
+
+	int numBlocks = calculateNumBlocksUsed(dir);
+	int i;
+	for(i=0; i<NUM_DIRECT; i++){
+		if(dir->direct[i]!=0){
+			addToFreeBlockList(dir->direct[i]);
+				
+			TracePrintf(300, "[Testing @ yfs.c @ rmDir] Freeing direct blocks: (%d)\n", dir->direct[i]);
+		}
+			dir->direct[i] = 0;
+	}
+	
+	//handle the indirect blocks
+	int numIndirect = numBlocks - NUM_DIRECT;
+	if(numIndirect > 0){
+		int blockNum = dir->indirect;
+		char *buf;
+		buf = malloc( sizeof(char) * SECTORSIZE );
+		int readIndirectBlockStatus;
+		readIndirectBlockStatus = ReadSector( dir->indirect, buf );
+		if( readIndirectBlockStatus != 0 )
+		{
+				TracePrintf( 0, "[Error @ yfs.c @ rmDir]: Read indirect block %d unsuccessfully\n", dir->indirect );
+				return ERROR;
+		}
+		for( i = 0; i < numIndirect; i++ )			
+		{
+				int blockIndex = *((int *) buf + i);
+				TracePrintf(300, "[Testing @ yfs.c @ rmDir] Freeing indirect blocks: (%d)\n", blockIndex );
+				addToFreeBlockList(blockIndex);
+		}
+	}
+	
+	//Now that we have freed all the block used
+	//write back the inode free it and return
+	dir->size = 0;
+	writeInode(openDir, dir);
+	free(dir);
+	addToFreeInodeList(openDir);
+
+	return 0;
 }
 
 int readFile( int inode )
