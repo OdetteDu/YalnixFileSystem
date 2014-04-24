@@ -7,6 +7,9 @@
 #include "global.h"
 
 /* Global Variables */
+int numInodes;
+int numBlocks;
+
 struct Message *msg;
 char *pathname;
 //char fileName[DIRNAMELEN];
@@ -316,8 +319,8 @@ void calculateFreeBlocksAndInodes()
 
 //Get total number of inodes and blocks from fs_header
 	struct fs_header *fsHeader = (struct fs_header *) buf;
-	int numInodes = fsHeader->num_inodes;
-	int numBlocks = fsHeader->num_blocks;
+	numInodes = fsHeader->num_inodes;
+	numBlocks = fsHeader->num_blocks;
 	int *isInodeFree = malloc( sizeof(int) * numInodes+1 );
 	int *isBlockFree = malloc( sizeof(int) * numBlocks );
 
@@ -493,6 +496,11 @@ int writeBlock( int blockNum, char *buf )
 /* Read and write for inode */
 struct inode* readInode( int inodeNum )
 {
+	if(inodeNum == 0 || inodeNum > numInodes )
+	{
+		TracePrintf(0, "[Error @ yfs.c @readInode]: inodeNum %d is illegal\n", inodeNum );
+		return NULL;
+	}
 	//TODO: need to check is the inode Num is valid, if the inode read is correct, should return NULL if encounter any error
 	int blockNum = getBlockNumInodeIn( inodeNum );
 
@@ -1132,6 +1140,43 @@ int readFile( int inodeNum, int currentPos, char *buf, int bufSize )
 int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
 {
 	TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: Begin: inodeNum: %d, currentPos: %d, bufSize: %d, buf: %s\n", inodeNum, currentPos, bufSize, buf );
+
+	int posInBuf = 0;
+	int posInFile = currentPos;
+
+	struct inode *inode = readInode(inodeNum);
+	if(inode == NULL)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ writeFile]: the inode %d is NULL\n", inodeNum);
+	}
+
+	if(inode -> type == INODE_FREE)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ writeFile]: the inode %d type is INODE_FREE\n", inodeNum);
+	}
+
+	int currentFileSize = inode -> size;
+	int newFileSize = currentPos + bufSize; 
+	int currentNumBlockNeeded = calculateNumBlocksUsed(currentFileSize);
+	int newNumBlockNeeded = calculateNumBlocksUsed(newFileSize);
+
+	if(currentNumBlockNeeded < newNumBlockNeeded)
+	{
+		//need to expand the file
+		int numBlocksNeedToAllocate = newNumBlockNeeded - currentNumBlockNeeded;
+		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need to expand the file by %d blocks: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", numBlocksNeedToAllocate, currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
+	}
+	else if(currentNumBlockNeeded > newNumBlockNeeded)
+	{
+		//need to truncate the file 
+		int numBlocksNeedToFree = currentNumBlockNeeded - newNumBlockNeeded;
+		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need to truncate the file by %d blocks: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", numBlocksNeedToFree, currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
+	}
+	else
+	{
+		//need not adjust the blocks
+		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need not adjust the file: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
+	}
 	return 0;
 }
 
