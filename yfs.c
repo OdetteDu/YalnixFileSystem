@@ -318,12 +318,13 @@ void calculateFreeBlocksAndInodes()
 	struct fs_header *fsHeader = (struct fs_header *) buf;
 	int numInodes = fsHeader->num_inodes;
 	int numBlocks = fsHeader->num_blocks;
-	int *isInodeFree = malloc( sizeof(int) * numInodes );
+	int *isInodeFree = malloc( sizeof(int) * numInodes+1 );
 	int *isBlockFree = malloc( sizeof(int) * numBlocks );
 
 	int i;
 	TracePrintf( level, "[Testing @ %s]: Free Inodes %d:\n", where, numInodes );
-	for( i = 7; i < numInodes; i++ )
+	isInodeFree[0] = USED;
+	for( i = 1; i < numInodes+1; i++ )
 	{
 		isInodeFree[i] = FREE;
 	}
@@ -338,8 +339,14 @@ void calculateFreeBlocksAndInodes()
 
 //Print inodes in blcok 1
 	int numOfBlocksContainingInodes = ((fsHeader->num_inodes) + 1) / (BLOCKSIZE / INODESIZE);
+	for( i = 0; i < numOfBlocksContainingInodes+1; i++ )
+	{
+		isBlockFree[i] = USED;
+	}
+	TracePrintf( level, "\n" );
+
 	TracePrintf( level, "BLOCKSIZE/INODESIZE: %d, inodes in %d blocks:\n", BLOCKSIZE / INODESIZE, numOfBlocksContainingInodes );
-	int inodeIndex = 0;
+	int inodeIndex = 1;
 	for( i = 1; i < BLOCKSIZE / INODESIZE; i++ )
 	{
 		int inodeFree = markUsedBlocks( (struct inode *) buf + i, isBlockFree );
@@ -393,7 +400,7 @@ void calculateFreeBlocksAndInodes()
 	}
 
 	TracePrintf( level, "[Testing @ %s]: Free Inodes %d:\n", where, numInodes );
-	for( i = 0; i < numInodes; i++ )
+	for( i = 0; i < numInodes+1; i++ )
 	{
 		TracePrintf( level, "%d:%d\n", i, isInodeFree[i] );
 		if( isInodeFree[i] == FREE )
@@ -414,7 +421,7 @@ void calculateFreeBlocksAndInodes()
 	}
 	TracePrintf( level, "\n" );
 
-	//The following code is to check if is linked list works correct
+//The following code is to check if is linked list works correct
 //	while (isInodeFreeHead != NULL)
 //	{
 //		TracePrintf(600, "[Testing @ yfs.c @ calculateFreeBlocksAndInodes]: free inode: %d\n", isInodeFreeHead -> num);
@@ -691,9 +698,9 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 {
 	//need to check if read inode successfully, such as make sure inodeNum is in correct bound
 	struct inode *inode = readInode( inodeNum );
-	TracePrintf( 400, "[Testing @ yfs.c @ readDirectory]: %d: inode(type: %d, nlink: %d, size: %d, direct: %d, indirect: %d)\n", inodeNum,
+	TracePrintf( 350, "[Testing @ yfs.c @ readDirectory]: %d: inode(type: %d, nlink: %d, size: %d, direct: %d, indirect: %d)\n", inodeNum,
 			inode->type, inode->nlink, inode->size, inode->direct[0], inode->indirect );
-	printInode( 300, inodeNum, "readDirectory", inode );
+	printInode( 400, inodeNum, "readDirectory", inode );
 	int *usedBlocks = malloc( sizeof(int) );		//remember to free this thing somewhere later
 
 	//need to check if get used blocks successfully, the inode may be a free inode
@@ -1380,6 +1387,8 @@ int main( int argc, char **argv )
 	//set all char in fileName \0, 
 	//TODO: check understanding
 //	memset(fileName, '\0', DIRNAMELEN);
+
+	readDirectory(1, "odette", 6);
 
 	int pid = Fork();
 	if( pid == 0 )
