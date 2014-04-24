@@ -64,7 +64,7 @@ void addToFreeBlockList( int blockNum )
 	{
 		isBlockFreeHead = toadd;
 		isBlockFreeTail = toadd;
-		isInodeFreeHead->next = NULL;
+		isBlockFreeHead->next = NULL;
 	}
 	else if( isBlockFreeHead == isBlockFreeTail )
 	{
@@ -350,11 +350,11 @@ void calculateFreeBlocksAndInodes()
 
 		isInodeFree[inodeIndex] = inodeFree;
 
-		if( inodeFree == FREE )
-		{
-			//add to the freeList
-			addToFreeInodeList( inodeIndex );
-		}
+//		if( inodeFree == FREE )
+//		{
+//			//add to the freeList
+//			addToFreeInodeList( inodeIndex );
+//		}
 		TracePrintf( level, "[Testing @ %s]: inode %d 's status is %d\n", where, inodeIndex, inodeFree );
 		inodeIndex++;
 	}
@@ -379,11 +379,11 @@ void calculateFreeBlocksAndInodes()
 					TracePrintf( 0, "[Error @ %s ]: Read indirect block %d unsuccessfully\n", where, inodeIndex );
 				}
 				isInodeFree[inodeIndex] = inodeFree;
-				if( inodeFree == FREE )
-				{
-					//add to the freeList
-					addToFreeInodeList( inodeIndex );
-				}
+//				if( inodeFree == FREE )
+//				{
+//					//add to the freeList
+//					addToFreeInodeList( inodeIndex );
+//				}
 				TracePrintf( level, "[Testing @ %s]: inode %d 's status is %d\n", where, inodeIndex, inodeFree );
 				inodeIndex++;
 			}
@@ -396,6 +396,10 @@ void calculateFreeBlocksAndInodes()
 	for( i = 0; i < numInodes; i++ )
 	{
 		TracePrintf( level, "%d:%d\n", i, isInodeFree[i] );
+		if( isInodeFree[i] == FREE )
+		{
+			addToFreeInodeList(i);
+		}
 	}
 	TracePrintf( level, "\n" );
 
@@ -403,12 +407,25 @@ void calculateFreeBlocksAndInodes()
 	for( i = 0; i < numBlocks; i++ )
 	{
 		TracePrintf( level, "%d:%d\n", i, isBlockFree[i] );
-		if( isBlockFree[i] )
+		if( isBlockFree[i] == FREE )
 		{
 			addToFreeBlockList( i );
 		}
 	}
 	TracePrintf( level, "\n" );
+
+	//The following code is to check if is linked list works correct
+//	while (isInodeFreeHead != NULL)
+//	{
+//		TracePrintf(600, "[Testing @ yfs.c @ calculateFreeBlocksAndInodes]: free inode: %d\n", isInodeFreeHead -> num);
+//		isInodeFreeHead = isInodeFreeHead -> next;
+//	}
+//
+//	while (isBlockFreeHead != NULL)
+//	{
+//		TracePrintf(600, "[Testing @ yfs.c @ calculateFreeBlocksAndInodes]: free block: %d\n", isBlockFreeHead -> num);
+//		isBlockFreeHead = isBlockFreeHead -> next;
+//	}
 }
 
 int calculateNumBlocksUsed( int size )
