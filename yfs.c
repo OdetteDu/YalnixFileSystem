@@ -706,7 +706,6 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 	//need to check if get used blocks successfully, the inode may be a free inode
 	int usedBlocksCount = getUsedBlocks( inode, &usedBlocks );
 	TracePrintf( 300, "[Testing @ yfs.c @ readDirectory]: usedBlockCount: %d\n", usedBlocksCount );
-	TracePrintf( 300, "[Testing @ yfs.c @ readDirectory]: usedBlock: %d\n", usedBlocks );
 	int numDirEntries = (inode->size) / sizeof(struct dir_entry);
 	int directoryCount = 0;
 	int index = 0;
@@ -1387,8 +1386,6 @@ int main( int argc, char **argv )
 	//set all char in fileName \0, 
 	//TODO: check understanding
 //	memset(fileName, '\0', DIRNAMELEN);
-
-	readDirectory(1, "odette", 6);
 
 	int pid = Fork();
 	if( pid == 0 )
