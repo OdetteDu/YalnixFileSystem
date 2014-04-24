@@ -388,6 +388,9 @@ void calculateFreeBlocksAndInodes()
 	for( i = 0; i < numBlocks; i++ )
 	{
 		TracePrintf( level, "%d:%d\n", i, isBlockFree[i] );
+		if(isBlockFree[i]){
+			  addToFreeBlockList(i);
+		}
 	}
 	TracePrintf( level, "\n" );
 }
