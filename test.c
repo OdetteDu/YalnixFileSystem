@@ -9,7 +9,8 @@ int main(int argc, char **argv)
 	printf("Hello, World!\n");
 	int fd = Create("/odette");
 	TracePrintf(500, "return from open\n");
-	Seek(fd, 0, SEEK_SET);
+	Write(fd, "Hello, World!", 14); 
+//	Seek(fd, 0, SEEK_SET);
 	TracePrintf(500, "return from seek\n");
 	
 	Exit(0);
