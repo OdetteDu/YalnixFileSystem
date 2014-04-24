@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 //	int fd =Create("/Test///abc/de/f//gh/i//j/kl//mn/odette");
 //	int fd2 = Open("/Test///abc/de/f//gh/i//j/kl//mn/odette");
 	MkDir("/Test");
-	MkDir("Test/test2");
+	MkDir("Test///////test2");
 //	ChDir("/Test/abc/fg");
 //	Close(fd);
 //	Close(fd2);
