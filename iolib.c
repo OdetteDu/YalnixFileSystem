@@ -158,7 +158,7 @@ extern int Create( char *pathname )
 	}
 	memcpy( pathCopy, pathname, length + 1 );
 
-	TracePrintf( 0, "[Testing @ iolib.c @ Create]: not copied path name\n" );
+	//TracePrintf( 0, "[Testing @ iolib.c @ Create]: not copied path name\n" );
 	openFileTable[newfd].fd = newfd;
 	openFileTable[newfd].isOpen = 1;
 
@@ -167,6 +167,7 @@ extern int Create( char *pathname )
 	msg.pathname = pathCopy;
 	msg.len = length + 1;
 
+	TracePrintf(0, "[Testing @ iolib.c @ Create]: copy pathName: ptr(%p), pathnamecopy(%s)\n", pathCopy, pathCopy);
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send == ERROR )
 	{

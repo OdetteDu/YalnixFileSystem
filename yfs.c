@@ -1381,8 +1381,9 @@ int seek(int inodeNum)
 		TracePrintf(0, "[Error @ yfs.c @ seek]: the inode: %d is NULL\n", inodeNum);
 		return ERROR;
 	}
-
-	return inode -> size;
+	int size = inode->size;
+	free(inode);
+	return size;
 }
 
 int stat( struct Message *msg )
@@ -1419,6 +1420,7 @@ void addressMessage( int pid, struct Message *msg )
 		//get pathname and len
 		len = msg->len;
 		pathname = malloc( sizeof(char) * len );
+		//TracePrintf(0, "[Testing @ yfs.c @ addressMessage]: pathname ptr (%p), pathname(%s)\n", msg->pathname, msg->pathname);
 		int copyFrom = CopyFrom( pid, pathname, msg->pathname, len );
 		if( copyFrom == ERROR )
 		{
