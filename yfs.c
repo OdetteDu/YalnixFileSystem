@@ -427,7 +427,7 @@ struct inode* readInode( int inodeNum )
 
 	struct inode *inode = malloc(sizeof(struct inode *));
 	memcpy(inode, (struct inode *)buf + inodeIndex, sizeof(struct inode*));
-	TracePrintf( 400, "[Testing @ yfs.c  @ readInode]: inode(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink, inode->size, inode->indirect );
+	TracePrintf( 400, "[Testing @ yfs.c  @ readInode]: %d: inode(type: %d, nlink: %d, size: %d, indirect: %d)\n", inodeNum, inode->type, inode->nlink, inode->size, inode->indirect );
 	free(buf);//TODO: THIS FREE SEEMS UNSAFE!!
 	return inode;
 }
