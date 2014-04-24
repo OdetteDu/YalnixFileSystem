@@ -100,10 +100,10 @@ void printLinkedList( int level, char *where, LinkedIntList* head )
 //end of linked list methods
 
 /* Utility functions for printing fs */
-void printInode( int level, char *where, struct inode *inode )
+void printInode( int level, int inodeNum, char *where, struct inode *inode )
 {
 	//Print basic information about an inode
-	TracePrintf( level, "[Testing @ %s]: inode(type: %d, nlink: %d, size: %d, indirect: %d)\n", where, inode->type, inode->nlink, inode->size,
+	TracePrintf( level, "[Testing @ yfs.c @ %s]: %d, inode(type: %d, nlink: %d, size: %d, direct: %d, indirect: %d)\n", where, inodeNum, inode->type, inode->nlink, inode->size, inode -> direct[0],
 			inode->indirect );
 
 	//Print direct block
@@ -162,9 +162,9 @@ void printDisk( int level, char *where )
 	int numOfBlocksContainingInodes = ((fsHeader->num_inodes) + 1) / (BLOCKSIZE / INODESIZE);
 	TracePrintf( level, "[Testing @ %s @ printDisk] inodes in %d blocks:\n", where, numOfBlocksContainingInodes );
 	int i;
-	for( i = 1; i < BLOCKSIZE / INODESIZE - 1; i++ )
+	for( i = 1; i < BLOCKSIZE / INODESIZE; i++ )
 	{
-		printInode( level, "", (struct inode *) buf + i );
+		printInode( level, i, "", (struct inode *) buf + i );
 	}
 
 	//Print inodes not in block 1
@@ -178,9 +178,9 @@ void printDisk( int level, char *where )
 		}
 		else
 		{
-			for( i = 0; i < BLOCKSIZE / INODESIZE - 1; i++ )
+			for( i = 0; i < BLOCKSIZE / INODESIZE; i++ )
 			{
-				printInode( level, "", (struct inode *) buf + i );
+				printInode( level, i, "", (struct inode *) buf + i );
 			}
 		}
 	}
@@ -403,6 +403,7 @@ struct inode* readInode( int inodeNum )
 
 	char *buf = readBlock( blockNum );
 	int inodeIndex = getInodeIndexWithinBlock( inodeNum );
+	TracePrintf(400, "[Testing @ yfs.c @readInode]: blockNum: %d, inodeIndex: %d, sizeof inode: %d\n", blockNum, inodeIndex, sizeof(struct inode));
 	//struct inode* inode = malloc(sizeof(struct inode));
 	//TODO: should do some mem copy instead of directly using buf here
 	// THIS WILL CAUSE MEMORY LEAK
@@ -415,8 +416,13 @@ struct inode* readInode( int inodeNum )
 	//int returnStatus = 0;
 
 	struct inode *inode = malloc(sizeof(struct inode *));
-	memcpy(inode, (struct inode *)buf + inodeIndex, sizeof(struct inode*));
-	TracePrintf( 400, "[Testing @ yfs.c  @ readInode]: %d: inode(type: %d, nlink: %d, size: %d, indirect: %d)\n", inodeNum, inode->type, inode->nlink, inode->size, inode->indirect );
+//	printInode(400, inodeNum,"readInode fresh inode", inode);
+//	inode = (struct inode *)buf + inodeIndex;
+//	printInode(400, inodeNum,"readInode inode from buf", inode);
+
+	memcpy(inode, (struct inode *)buf + inodeIndex, sizeof(struct inode));
+//	TracePrintf( 400, "[Testing @ yfs.c @ readInode]: %d: inode(type: %d, nlink: %d, size: %d, direct: %d, indirect: %d)\n", inodeNum, inode->type, inode->nlink, inode->size, inode -> direct[0], inode->indirect );
+	printInode(400, inodeNum,"readInode inode from memcpy", inode);
 	free(buf);//TODO: THIS FREE SEEMS UNSAFE!!
 	return inode;
 }
@@ -598,7 +604,8 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 {
 	//need to check if read inode successfully, such as make sure inodeNum is in correct bound
 	struct inode *inode = readInode( inodeNum );
-	printInode( inodeNum, "readDirectory", inode );
+	TracePrintf( 400, "[Testing @ yfs.c @ readDirectory]: %d: inode(type: %d, nlink: %d, size: %d, direct: %d, indirect: %d)\n", inodeNum, inode->type, inode->nlink, inode->size, inode -> direct[0], inode->indirect );
+	printInode( 300, inodeNum, "readDirectory", inode );
 	int *usedBlocks = malloc( sizeof(int) );		//remember to free this thing somewhere later
 
 	//need to check if get used blocks successfully, the inode may be a free inode
@@ -1159,14 +1166,13 @@ int main( int argc, char **argv )
 	}
 	//set the current workingDirectoryInodeNumber to be ROOTINODE
 //	workingDirectoryInodeNumber = ROOTINODE;
-//	printDisk( 1500, "main.c" );
+	printDisk( 1500, "main.c" );
 	calculateFreeBlocksAndInodes();
 
 	//set all char in fileName \0, 
 	//TODO: check understanding
 //	memset(fileName, '\0', DIRNAMELEN);
 
-	/*
 	int pid = Fork();
 	if( pid == 0 )
 	{
@@ -1192,7 +1198,6 @@ int main( int argc, char **argv )
 
 		}
 	}
-	*/
 
 	return 0;
 }
