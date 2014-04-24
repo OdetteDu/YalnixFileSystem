@@ -158,7 +158,7 @@ extern int Create( char *pathname )
 	}
 	memcpy( pathCopy, pathname, length + 1 );
 
-	TracePrintf( 0, "[Testing @ iolib.c @ Create]: copied path name\n" );
+	TracePrintf( 0, "[Testing @ iolib.c @ Create]: not copied path name\n" );
 	openFileTable[newfd].fd = newfd;
 	openFileTable[newfd].isOpen = 1;
 
@@ -185,7 +185,7 @@ extern int Read( int fd, void *buf, int size )
 {
 	if( isFileDescriptorLegal( fd ) != 0 )
 	{
-		TracePrintf( 0, "[Error @ iolib.c @ Read]: The fd %d is not legal\n", fd );
+		TracePrintf( 0, "[Error @ iolib.c @ Read]: The fd %s is not legal\n", fd );
 		return ERROR;
 	}
 	struct Message msg;
@@ -206,6 +206,7 @@ extern int Read( int fd, void *buf, int size )
 
 extern int Write( int fd, void *buf, int size )
 {
+	TracePrintf(200, "[Testing @ iolib.h @ Write]: fd: %d, buf: %d:%s, size: %d, sizeof(struct msg):%d\n", fd, buf, buf, size, sizeof(struct Message));
 	if( isFileDescriptorLegal( fd ) != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.c @ Write]: The fd %d is not legal\n", fd );
@@ -217,6 +218,7 @@ extern int Write( int fd, void *buf, int size )
 	msg.len = openFileTable[fd].currentPos;
 	msg.buf = buf;
 	msg.size = size;
+	TracePrintf(200, "[Testing @ iolib.h @ Write]: fd: %d, buf: %d:%s, size: %d, sizeof(struct msg):%d\n", fd, msg.buf, msg.buf, size, sizeof(struct Message));
 
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
