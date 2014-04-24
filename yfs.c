@@ -1278,11 +1278,24 @@ int unlink( char * pathname, int pathnamelen, struct Message * msg )
 
 }
 
-int symLink( struct Message *msg )
+int symLink(char *oldname, int oldnamelen, char* newname, int newnamelen)
 {
 //	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
-	char oldPathName[MAXPATHNAMELEN], newPathName[MAXPATHNAMELEN];
+	TracePrintf(0, "[Testing @ yfs.c @ symLink]: Entering symLink: oldname(%s) oldlen(%d), newname(%s), newlen(%d)\n", oldname, oldnamelen, newname, newnamelen);
+	
+	//first create the symlink file
+	int newSymLinkInodeNum = createFile(newname, newnamelen);
+	
+	if(newSymLinkInodeNum == ERROR){
+		  TracePrintf(0, "[Error @ yfs.c @ symLink]: Unable to create newpathname: (%s)\n",newname);
+		  return ERROR;
+	}
 
+	struct inode * symLinkNode = readInode(newSymLinkInodeNum);
+	symLinkNode->type = INODE_SYMLINK;
+//TODO: WRITE THE OLDNAME INTO THE Symlinknode;
+	writeInode(newSymLinkInodeNum, symLinkNode);
+	free(symLinkNode);
 	return 0;
 
 }
