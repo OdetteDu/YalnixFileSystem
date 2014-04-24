@@ -92,7 +92,7 @@ extern int Open( char *pathname )
 	int newfd, length;
 	char *pathCopy;
 
-	TracePrintf( 0, "[Testing @ iolib.c @ Open]: Entering open\n" );
+	TracePrintf( 0, "[Testing @ iolib.c @ Open]: Entering open: %s\n", pathname );
 	if( (newfd = getFreeFD()) == ERROR )
 		return ERROR; //get new fd
 	if( (length = getPathnameLength( pathname )) == ERROR )
@@ -144,7 +144,7 @@ extern int Create( char *pathname )
 	int newfd, length;
 	char *pathCopy;
 
-	TracePrintf( 0, "[Testing @ iolib.c @ Create]: Entering create\n" );
+	TracePrintf( 0, "[Testing @ iolib.c @ Create]: Entering create: %s\n", pathname );
 	if( (newfd = getFreeFD()) == ERROR )
 		return ERROR;	//get new fd
 	if( (length = getPathnameLength( pathname )) == ERROR )
@@ -229,6 +229,8 @@ extern int Write( int fd, void *buf, int size )
 
 extern int Seek( int fd, int offset, int whence )
 {
+	TracePrintf(200, "[Testing @ iolib.h @ Seek]: fd: %d, offset: %d, whence: %d\n", fd, offset, whence);
+
 	if(isFileDescriptorLegal(fd) == ERROR)
 	{
 		TracePrintf(0, "[Error @ iolib.c @ Seek]: The fd: %d is not legal, MAX_OPEN_FILES: %d\n", fd, MAX_OPEN_FILES);
