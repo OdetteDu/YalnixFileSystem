@@ -892,6 +892,11 @@ int mkDir( char * pathname, int pathNameLen )
 			writeNewEntryToDirectory( newInodeNum, newDirEntry );
 			free( newDirEntry );
 
+			//update nlink for lastExistingDir;
+			struct inode *lastinode = readInode(lastExistingDir);
+			lastinode->nlink += 1;
+			writeInode(lastExistingDir, lastinode);
+			free(lastinode);
 			newDirEntry = malloc( sizeof(struct dir_entry) );
 			memset( newDirEntry->name, '\0', DIRNAMELEN );
 			memcpy( newDirEntry->name, "..", 2 );
@@ -914,12 +919,11 @@ int mkDir( char * pathname, int pathNameLen )
 }
 
 // Change to a new dir
-
+/*
 int chDir( char *pathname, int pathNameLen )
 {
 	int fileNameCount;
 	char *fileName = malloc( sizeof(char) * DIRNAMELEN );
-	memset( fileName, '\0', DIRNAMELEN );
 
 	TracePrintf( 0, "[Testing @ yfs.c @ chDir] Entering Chdir, requesting %s\n", pathname );
 	int lastExistingDir;
@@ -928,6 +932,9 @@ int chDir( char *pathname, int pathNameLen )
 	if( directoryInodeNum == ERROR )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ chDir]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
+		//Free
+		//
+		free(fileName);
 		return ERROR;
 
 	}
@@ -939,7 +946,8 @@ int chDir( char *pathname, int pathNameLen )
 		//TODO:get the inode from inodenumber to verify INODE_DIRECTORY
 		workingDirectoryInodeNumber = lastExistingDir;
 		//changed working directory number;
-		return 0;
+		free(fileName);
+		return lastExistingDir;
 	}
 	else
 	{
@@ -949,6 +957,7 @@ int chDir( char *pathname, int pathNameLen )
 		if( fileInodeNumber == 0 )
 		{
 			TracePrintf( 0, "[Error @ yfs.c @ chDir]: file not found: %s, full path reqeusted: %s\n", fileName, pathname );
+			free(fileName);
 			return ERROR;
 		}
 
@@ -960,6 +969,7 @@ int chDir( char *pathname, int pathNameLen )
 			return ERROR;
 		}
 		workingDirectoryInodeNumber = fileInodeNumber;
+		free(fileName);
 		return 0;
 	}
 	//when fileNameCount != 0, 
@@ -968,6 +978,25 @@ int chDir( char *pathname, int pathNameLen )
 	free( fileName );
 	//memset(fileName, 0, DIRNAMELEN);
 	return ERROR;
+
+}*/
+
+int chDir(char* pathname, int pathNameLen){
+	int dir = openFileOrDir(pathname, pathNameLen);
+	if(dir == ERROR){
+		  TracePrintf(0, "[Error @ yfs.c @ chDir] cannot open path %s\n", pathname);
+		return ERROR;
+	}
+
+	struct inode* inode = readInode(dir);
+	printInode(0, dir, "chDir", inode);
+	if(inode->type != INODE_DIRECTORY){
+		  TracePrintf(0, "[Error @ yfs.c @ chDir] not a directory %s\n", pathname);
+		  return ERROR;
+	
+	}
+
+	return dir;
 
 }
 
@@ -1083,16 +1112,62 @@ int link( struct Message * msg )
 
 }
 
-int unlink( char * pathname, int pathnamelen )
+int unlink( char * pathname, int pathnamelen, struct Message * msg )
 {
-	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
+	//TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
+	TracePrintf(0, "[Testing @ yfs.c @ unlink]: Entering unlik for (%s) pathname\n", pathname);
+
+	char *fileName = malloc(sizeof(char)*DIRNAMELEN);
+	int fileNameCount = 0;
+	int lastExistingDir;
+
+	int findDir = gotoDirectory(pathname, pathnamelen, &lastExistingDir, &fileNameCount, &fileName);
+	if(findDir == ERROR){
+		//need to contii
+		//nue to search for file in the current dir	
+		TracePrintf(0, "[Error @ yfs.c @ unlink]: bad gotoDictory\n");
+		free(fileName);
+		return ERROR;
+	}
+
+	
+	if(fileNameCount == 0){
+		TracePrintf(0, "[Error @ yfs.c @ unlink]: the pathname ends with a directory %s pathnam\n");
+		free(fileName);
+		return ERROR;
+	}else{
+		  
+		int linkFile = readDirectory(lastExistingDir, fileName, fileNameCount);
+		if(linkFile == 0){
+			  //not found
+			TracePrintf(0, "[Erro @ yfs.c @ unlink]: cannot find file (%s), full path(%s)\n", fileName, pathname); 
+			free(fileName);
+			return ERROR;
+		}else{
+			  
+			struct inode* inode = readInode(linkFile);
+			if(inode->type == SYMLINK){
+				  //not traversed
+				  //just unlink the symlink
+			}else{
+				  
+				//hard link 
+				//traversed
+			}
+
+			//Remove the directory entry 
+
+		}
+	}
 	return 0;
 
 }
 
 int symLink( struct Message *msg )
 {
-	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
+//	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
+	char oldPathName[MAXPATHNAMELEN], newPathName[MAXPATHNAMELEN];
+	
 	return 0;
 
 }
@@ -1179,7 +1254,7 @@ void addressMessage( int pid, struct Message *msg )
 		case UNLINK:
 			//TODO: UNLINK
 			//
-			unlink( pathname, len );
+			unlink( pathname, len, msg );
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message UNLINK: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case MKDIR:
