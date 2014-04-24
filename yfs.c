@@ -1342,18 +1342,18 @@ void addressMessage( int pid, struct Message *msg )
 		case MKDIR:
 			//TODO: MIDIR
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message MKDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
-			msg->returnStatus = mkDir( pathname, len );
+			msg->size = mkDir( pathname, len );
 			break;
 		case RMDIR:
 			//TODO: RMDIRi
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message RMDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
-			msg->returnStatus = rmDir( pathname, len );
+			msg->size = rmDir( pathname, len );
 			break;
 		case CHDIR:
 			//TODO: CHDIR
 
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CHDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
-			msg->returnStatus = chDir( pathname, len );
+			msg->size = chDir( pathname, len );
 			break;
 		case STAT:
 			//TODO: STAT
