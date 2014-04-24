@@ -1156,7 +1156,9 @@ int writeFile( int inode )
 
 }
 
-int link(char *oldname, int oldnamelen, char* newname)
+/* Link implementation at server side
+ */
+int link(int curDir, char *oldname, int oldnamelen, char* newname, int newnamelen)
 {
 	//TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );	
 	int lastExistingDir;
@@ -1165,30 +1167,53 @@ int link(char *oldname, int oldnamelen, char* newname)
 	TracePrintf(0, "[Testing @ yfs.c @ link]:Entering link, reqeusting oldname(%s), newname(%s)\n", oldname, newname);
 
 	int oldInodeNum = openFileOrDir(oldname, oldnamelen);
+	if(oldInodeNum == ERROR){
+		TracePrintf(0, "[Error @ yfs.c @ link]: Cannot find oldpathname:(%s)\n", oldname);
+		free(fileName);
+		return ERROR;
+	}
 
+	struct inode* oldnode = readInode(oldInodeNum);
+	if(oldnode->type == INODE_DIRECTORY){
+		  TracePrintf(0, "[Error @ yfs.c @ link]: oldpathname is a directory(%s)\n", oldname);
+		  free(fileName);
+		  return ERROR;
+	}
 	/* Need to check if new path already exists */
-	//int findDir = gotoDirectory(msg->curDir, oldPathName, (msg->oldpathname).length, &lastExistingDir, &fileNameCount, &fileName);
-	//if(findDir == 0){
-	//  //need to continue to search for file in the current dir
-	//  inodeNum = readDirectory(lastExistingDir, fileName, fileNameCount);
-	//  if(inodeNum == 0){
-	//    //return ERROR for not finding this file
-	//  }
-	//
-	//  struct inode * inode = readInode(inodeNum);
-	//  if(inode->type == INODE_DIRECTORY){
-	//    //should not be a directory
-	//    return ERROR;
-	//  }
-	//
-	//  
-	//}
-	// //now we have verified that oldpath indeed exists and is not a dir
-	//
-	//	findDir = gotoDirectory(msg->curDir, newPathName, (msg->newpathname).length, &lastExistingDir, &fileNameCount, &fileName);
-	//	if(findDir == 0){
-	//	  
-	//	}
+
+	int checkNewPath = openFileOrDir(newname, newnamelen);
+	if(checkNewPath != ERROR){
+		  TracePrintf(0, "[Error @ yfs.c @ link]: newpathname already exists(%s) inodenum(%d)\n", newname, checkNewPath);
+		free(fileName);
+		return ERROR;
+	}
+
+	//TODO: pass in the current directory
+	int findDir = gotoDirectory(newname, newnamelen, &lastExistingDir, &fileNameCount, &fileName);
+	if(findDir == ERROR){
+		  TracePrintf(0, "[Testing @ yfs.c @ link]: did not find last dir in newname %s\n", fileName);
+		  free(fileName);
+		  return ERROR;
+	}
+	if(fileNameCount != 0){
+		TracePrintf(0,"[Testing @ yfs.c @ link]: write a new file as (%s), fullpath for newnae(%s)\n", fileName, newname);
+		struct inode* lastDir = readInode(lastExistingDir);
+
+		//create a new dir_entry for the new file
+		struct dir_entry *newDirEntry;
+		newDirEntry = malloc( sizeof(struct dir_entry) );
+		newDirEntry->inum = oldInodeNum;
+		//this part may be substituted by a c libaray function
+		memcpy( newDirEntry->name, fileName, DIRNAMELEN );
+
+		TracePrintf( 0, "[Testing @ yfs.c @ CreateFile]: new dir_entry created: inum(%d), name(%s)\n", newDirEntry->inum, newDirEntry->name );
+		writeNewEntryToDirectory( lastExistingDir, newDirEntry ); //TODO, not always ROOTINODE
+		free(newDirEntry);	
+	}else{
+	
+		//TODO: should never reach here
+	}
+
 	return 0;
 
 }
@@ -1308,7 +1333,7 @@ void addressMessage( int pid, struct Message *msg )
 	char *buf;
 	int inode;
 	int currentPos;
-
+	int curDir = ROOTINODE;
 	if( type == OPEN || type == CREATE || type == UNLINK || type == MKDIR || type == RMDIR || type == CHDIR || type == STAT || type == READLINK
 			|| type == LINK || type == SYMLINK )
 	{
@@ -1393,7 +1418,9 @@ void addressMessage( int pid, struct Message *msg )
 			//TODO: LINK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message LINK: type(%d), oldLen(%d), oldName(%s), newLen(%d), newName(%s)\n", type,
 					len, pathname, size, buf );
-			msg->returnStatus = link(pathname, len, buf);
+			msg->returnStatus = link(workingDirectoryInodeNumber, pathname, len, buf, size);
+			free(pathname);
+			free(buf);
 			break;
 		case SYMLINK:
 			//TODOZ: SYMLINK
