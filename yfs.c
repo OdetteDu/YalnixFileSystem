@@ -469,7 +469,7 @@ struct inode* readInode( int inodeNum )
 //	free(buf);
 	//int returnStatus = 0;
 
-	struct inode *inode = malloc(sizeof(struct inode *));
+	struct inode *inode = malloc(sizeof(struct inode));
 //	printInode(400, inodeNum,"readInode fresh inode", inode);
 //	inode = (struct inode *)buf + inodeIndex;
 //	printInode(400, inodeNum,"readInode inode from buf", inode);
@@ -487,7 +487,7 @@ struct inode* writeInode( int inodeNum, struct inode *newInode )
 
 	char *buf = readBlock( blockNum );
 	int inodeIndex = getInodeIndexWithinBlock( inodeNum );
-	memcpy( (struct inode *) buf + inodeIndex, newInode, sizeof(struct inode *) );
+	memcpy( (struct inode *) buf + inodeIndex, newInode, sizeof(struct inode) );
 	struct inode *inode = newInode;
 	TracePrintf( 400, "[Testing @ yfs.c  @ writeInode]: inode after write(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink,
 			inode->size, inode->indirect );
@@ -721,7 +721,7 @@ int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
 		int blockNum = usedBlocks[usedBlocksCount - 1];
 		TracePrintf( 300, "[Testing @ yfs.c @ writeNewEntryToDirectory]: usedBlockCount: %d, blockNum tobe write: %d\n", usedBlocksCount, blockNum );
 		char *buf = readBlock( blockNum );
-		memcpy( (struct dir_entry *) buf + dirEntryIndex, newDirEntry, sizeof(struct dir_entry *) );
+		memcpy( (struct dir_entry *) buf + dirEntryIndex, newDirEntry, sizeof(struct dir_entry) );
 		struct dir_entry *dirEntry = (struct dir_entry *) buf + dirEntryIndex;
 		TracePrintf( 300, "[Testing @ yfs.c @ writeNewEntryToDirectory]: block (%d), index(%d), directory[%d]: inum(%d), name(%s)\n", blockNum,
 				dirEntryIndex, dirEntryIndex, dirEntry->inum, dirEntry->name );
