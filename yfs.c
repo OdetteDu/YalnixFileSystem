@@ -989,7 +989,38 @@ int yfsWrite( int inode )
 
 int link( struct Message * msg )
 {
-	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
+	//TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );	
+	int inodeNum;
+	char oldPathName[MAXPATHNAMELEN];
+	char newPathName[MAXPATHNAMELEN];
+	//CopyFrom(oldPathName, msg->oldpathname);
+	//CopyFrom(newPathName, msg->newpathname);
+	int lastExistingDir;
+	char fileName[DIRNAMELEN];
+	int fileNameCount;
+
+	//int findDir = gotoDirectory(msg->curDir, oldPathName, (msg->oldpathname).length, &lastExistingDir, &fileNameCount, &fileName);
+	//if(findDir == 0){
+	//  //need to continue to search for file in the current dir
+	//  inodeNum = readDirectory(lastExistingDir, fileName, fileNameCount);
+	//  if(inodeNum == 0){
+	//    //return ERROR for not finding this file
+	//  }
+	//
+	//  struct inode * inode = readInode(inodeNum);
+	//  if(inode->type == INODE_DIRECTORY){
+	//    //should not be a directory
+	//    return ERROR;
+	//  }
+	//
+	//  
+	//}
+	// //now we have verified that oldpath indeed exists and is not a dir
+	//
+	//	findDir = gotoDirectory(msg->curDir, newPathName, (msg->newpathname).length, &lastExistingDir, &fileNameCount, &fileName);
+	//	if(findDir == 0){
+	//	  
+	//	}
 	return 0;
 
 }
