@@ -493,6 +493,7 @@ int writeBlock( int blockNum, char *buf )
 /* Read and write for inode */
 struct inode* readInode( int inodeNum )
 {
+	//TODO: need to check is the inode Num is valid, if the inode read is correct, should return NULL if encounter any error
 	int blockNum = getBlockNumInodeIn( inodeNum );
 
 	char *buf = readBlock( blockNum );
@@ -1269,6 +1270,18 @@ int readLink( struct Message *msg )
 
 }
 
+int seek(int inodeNum)
+{
+	struct inode *inode = readInode(inodeNum); 
+	if(inode == NULL)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ seek]: the inode: %d is NULL\n", inodeNum);
+		return ERROR;
+	}
+
+	return inode -> size;
+}
+
 int stat( struct Message *msg )
 {
 	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
@@ -1322,7 +1335,7 @@ void addressMessage( int pid, struct Message *msg )
 		}
 	}
 
-	if( type == READ || type == WRITE )
+	if( type == READ || type == WRITE || type == SEEK )
 	{
 		//get inode and pos
 		inode = msg->inode;
@@ -1338,24 +1351,24 @@ void addressMessage( int pid, struct Message *msg )
 			msg->inode = openFileOrDir( pathname, len );
 			break;
 		case CREATE:
-			msg->inode = createFile( pathname, len );
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CREATE: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
+			msg->inode = createFile( pathname, len );
 			break;
 		case UNLINK:
 			//TODO: UNLINK
 			//
-			unlink( pathname, len, msg );
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message UNLINK: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
+			unlink( pathname, len, msg );
 			break;
 		case MKDIR:
 			//TODO: MIDIR
-			msg->returnStatus = mkDir( pathname, len );
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message MKDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
+			msg->returnStatus = mkDir( pathname, len );
 			break;
 		case RMDIR:
 			//TODO: RMDIRi
-			msg->returnStatus = rmDir( pathname, len );
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message RMDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
+			msg->returnStatus = rmDir( pathname, len );
 			break;
 		case CHDIR:
 			//TODO: CHDIR
@@ -1391,6 +1404,11 @@ void addressMessage( int pid, struct Message *msg )
 			//TODO: WRITE
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
 					currentPos, size, buf );
+			break;
+		case SEEK:
+			//TODO: SEEK
+			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SEEK: type(%d), inode(%d)\n", type, inode );
+			msg -> size = seek(inode);
 			break;
 		case SYNC:
 			//TODO: SYNC
