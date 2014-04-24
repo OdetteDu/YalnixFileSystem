@@ -242,6 +242,7 @@ extern int Seek( int fd, int offset, int whence )
 	struct Message msg;
 	msg.messageType = SEEK;
 	msg.inode = inodeNum;
+	msg.len = currentPos;
 
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
