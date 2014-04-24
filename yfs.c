@@ -9,13 +9,13 @@
 /* Global Variables */
 struct Message *msg;
 char *pathname;
-char fileName[DIRNAMELEN];
-int fileNameCount;
+//char fileName[DIRNAMELEN];
+//int fileNameCount;
 
 
 //the working directory inode number is the ROOTINODE at the 
 // beginning of things....
-int workingDirectoryInodeNumber;
+int workingDirectoryInodeNumber = ROOTINODE;
 /* Initialize the linkedIntList */
 LinkedIntList* isInodeFreeHead=NULL;
 LinkedIntList* isBlockFreeHead=NULL;
@@ -96,7 +96,7 @@ void printInode( int level, char *where, struct inode *inode )
 			inode->indirect );
 
 	//Print direct block
-	TracePrintf( level, "Direct block: \n" );
+	TracePrintf( level, "prDirect block: \n" );
 	int i;
 	for( i = 0; i < NUM_DIRECT; i++ )
 	{
@@ -423,8 +423,10 @@ struct inode* readInode( int inodeNum )
 	// memcpy(inode, buf, blocksize - inodeindex);
 	//memcpy((struct inode *)buf + inodeIndex, inode, sizeof(struct inode*));
 //	free(buf);
+	//int returnStatus = 0;
 
-	struct inode *inode = (struct inode *)buf + inodeIndex;
+	struct inode *inode = malloc(sizeof(struct inode *));
+	memcpy(inode, (struct inode *)buf + inodeIndex, sizeof(struct inode*));
 	TracePrintf( 400, "[Testing @ yfs.c  @ readInode]: inode(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink, inode->size, inode->indirect );
 	free(buf);//TODO: THIS FREE SEEMS UNSAFE!!
 	return inode;
@@ -481,7 +483,7 @@ int getUsedBlocks( struct inode *inode, int **usedBlocks )
 	else
 	{
 		//need to handle indirect blocks
-		TracePrintf( level, "Direct block: \n" );
+		TracePrintf( level, "Indirect block: \n" );
 		int i;
 		for( i = 0; i < NUM_DIRECT; i++ )
 		{
@@ -520,9 +522,9 @@ int getUsedBlocks( struct inode *inode, int **usedBlocks )
 
 //return the last directory's inode number
 //This method also changes fileName and fileNameCount
-int gotoDirectory( char *pathname, int pathNameLen, int* lastExistingDir)
+int gotoDirectory( char *pathname, int pathNameLen, int* lastExistingDir, int * fileNameCount, char** fileName)
 {
-	int i, j;
+	int i;
 	int lastDirectoryInodeNum;
 	char c = pathname[0];
 	//check is pathname is empty
@@ -549,30 +551,29 @@ int gotoDirectory( char *pathname, int pathNameLen, int* lastExistingDir)
 	}
 
 	(*lastExistingDir) = lastDirectoryInodeNum;
-
+	TracePrintf(300, "[Testing @ yfs.c @ gotoDirectory]: start to parse path name\n");
+	char prev = 0;
 	//parse the pathname and change the lastDirectoryInodeNum
 	for( i = 0; i < MAXPATHNAMELEN; i++ )
 	{
+//		TracePrintf(500, "[Testing @ yfs.c @ gotoDirectory]: reading c\n");
 		c = pathname[i];
-		TracePrintf( 1300, "[Testing @ yfs.c @ gotoDirectory]: char: %c\n", c );
+		TracePrintf( 500, "[Testing @ yfs.c @ gotoDirectory]: char: %c\n", c );
 
-		if( c == '/' )
+		if( c == '/')
 		{
-			if( fileNameCount != 0 )
+			if( *fileNameCount != 0 )
 			{
-				TracePrintf( 300, "[Testing @ yfs.c @ gotoDirectory]: need to go to this directory (%s) in the current directory\n", fileName );
+				TracePrintf( 300, "[Testing @ yfs.c @ gotoDirectory]: need to go to this directory (%s) in the current directory\n", *fileName );
 				
 				//Change the lastExistingDir inumber
-				(*lastExistingDir) = readDirectory(*lastExistingDir, fileName, fileNameCount);
+				(*lastExistingDir) = readDirectory(*lastExistingDir, *fileName, *fileNameCount);
 				if(*lastExistingDir == 0){
-					TracePrintf(300, "[Error @ yfs.c @ gotoDirectory]: path contains : (%s), it is not a directory\n", fileName);  
+					TracePrintf(300, "[Error @ yfs.c @ gotoDirectory]: path contains : (%s), it is not a directory\n",*fileName);  
 					return ERROR;
 				}
-				fileNameCount = 0;
-				for( j = 0; j < DIRNAMELEN; j++ )
-				{
-					fileName[j] = 0;
-				}
+				*fileNameCount = 0;
+				memset(*fileName, '\0', DIRNAMELEN);
 			
 			}
 		}
@@ -583,16 +584,20 @@ int gotoDirectory( char *pathname, int pathNameLen, int* lastExistingDir)
 		}
 		else
 		{
-			fileName[fileNameCount] = c;
-			fileNameCount++;
-			if( fileNameCount >= DIRNAMELEN )
+//			TracePrintf( 500, "[Testing @ yfs.c @ gotoDirectory]: writing c\n");
+			(*fileName)[*fileNameCount]= c;
+			(*fileNameCount)++;
+			if( *fileNameCount >= DIRNAMELEN )
 			{
-				TracePrintf( 0, "[Error @ yfs.c @ gotoDirectory]: file name length exceeds DIRNAMELEN: %s\n", fileName );
+				TracePrintf( 0, "[Error @ yfs.c @ gotoDirectory]: file name length exceeds DIRNAMELEN:(%s)\n", *fileName );
+			return ERROR;
 			}
 		}
+
+		prev = c;
 	}
 
-	TracePrintf( 300, "[Testing @ yfs.c @ gotoDirectory]: need to go to open or create this file (%s) in the current directory\n", fileName );
+	TracePrintf( 300, "[Testing @ yfs.c @ gotoDirectory]: need to go to open or create this file (%s) in the current directory\n", *fileName );
 
 	return lastDirectoryInodeNum;
 }
@@ -601,6 +606,7 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 {
 	//need to check if read inode successfully, such as make sure inodeNum is in correct bound
 	struct inode *inode = readInode(inodeNum);
+	printInode(inodeNum, "readDirectory", inode);
 	int *usedBlocks = malloc(sizeof(int));//remember to free this thing somewhere later
 
 	//need to check if get used blocks successfully, the inode may be a free inode
@@ -621,7 +627,7 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 			TracePrintf(300, "[Testing @ yfs.c @ readDirectory]: block (%d), index(%d), directory[%d]: inum(%d), name(%s)\n", i, index, directoryCount, dirEntry -> inum, dirEntry -> name);
 
 			//compare the dir_entry's name and fileName
-			int compare = strncmp(dirEntry -> name, fileName, DIRNAMELEN);
+			int compare = strncmp(dirEntry -> name, filename, DIRNAMELEN);
 			if(compare == 0)
 			{
 				//match found
@@ -634,7 +640,6 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 		index = 0;
 	}
 	free(usedBlocks);
-	//free(inode);
 	return 0;//meaning unfound
 }
 
@@ -675,6 +680,7 @@ int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
 		TracePrintf(300, "Testin @ yfs.c @ writeNewEntryToDirectory]: originalSize: %d, newSize: %d\n", originalSize, newSize);
 		writeInode(inodeNum, inode);	
 	}
+	//free
 	return 0;
 }
 
@@ -683,7 +689,11 @@ int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
 int createFile( char *pathname, int pathNameLen )
 {
 	int lastExistingDir;
-	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir );
+	char *fileName = malloc(sizeof(char)*DIRNAMELEN);
+	memset(fileName, '\0', DIRNAMELEN);
+	int fileNameCount;
+	
+	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
 	if( directoryInodeNum == ERROR )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ CreateFile]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
@@ -693,7 +703,7 @@ int createFile( char *pathname, int pathNameLen )
 	//read directoryInodeNum
 	//	int fileInodeNum = readDirectory(workingDirectoryInodeNumber, fileName, fileNameCount);//TODO, not always ROOTINODE
 	
-	int fileInodeNum = readDirectory(lastExistingDir, fileName, fileNameCount);//TODO, not always ROOTINODE
+	int fileInodeNum = readDirectory(lastExistingDir, fileName,fileNameCount);//TODO, not always ROOTINODE
 	if(fileInodeNum == 0)
 	{
 		//file not found, make a new file
@@ -711,11 +721,7 @@ int createFile( char *pathname, int pathNameLen )
 		newDirEntry -> inum = newInodeNum;
 
 		//this part may be substituted by a c libaray function
-		int i;
-		for(i = 0; i<DIRNAMELEN; i++)
-		{
-			newDirEntry -> name[i] = fileName[i];
-		}
+		memcpy(newDirEntry->name, fileName, DIRNAMELEN);
 
 		TracePrintf( 0, "[Testing @ yfs.c @ CreateFile]: new dir_entry created: inum(%d), name(%s)\n", newDirEntry -> inum, newDirEntry -> name );
 		writeNewEntryToDirectory(lastExistingDir, newDirEntry);//TODO, not always ROOTINODE
@@ -737,7 +743,7 @@ int createFile( char *pathname, int pathNameLen )
 
 	//TODO: clean up fileName and fileNameCount
 	fileNameCount = 0;
-
+	free(fileName);
 //	fileInodeNum = readDirectory(ROOTINODE, fileName, fileNameCount);//test purpose only, should be delete
 	return fileInodeNum;
 }
@@ -746,8 +752,12 @@ int createFile( char *pathname, int pathNameLen )
 
 int openFileOrDir(char *pathname, int pathNameLen){
 	int lastExistingDir;
+	int fileNameCount=0;
+	char *fileName = malloc(sizeof(char)*DIRNAMELEN);
+	memset(fileName, '\0', DIRNAMELEN);
+	memset(fileName, '\0', DIRNAMELEN);
 	//fill in fileName and fileName count;
-	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir);
+	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName);
 	if( directoryInodeNum == ERROR )
 	{
 			TracePrintf( 0, "[Error @ yfs.c @ CreateFile]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
@@ -763,9 +773,13 @@ int openFileOrDir(char *pathname, int pathNameLen){
 
 int mkDir(char * pathname, int pathNameLen){
 	  
-	TracePrintf(0, "[Testing @ yfs.c @ mkDir] Entering Mkdir\n");
+	TracePrintf(0, "[Testing @ yfs.c @ mkDir] Entering Mkdir, requesting %s\n", pathname);
+	int fileNameCount;
+	char *fileName = malloc(sizeof(char)*DIRNAMELEN);
+	memset(fileName, '\0', DIRNAMELEN);
+	
 	int lastExistingDir;
-	int directoryInodeNum = gotoDirectory(pathname, pathNameLen, &lastExistingDir);
+	int directoryInodeNum = gotoDirectory(pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName);
 
 	if(directoryInodeNum  == ERROR){
 			TracePrintf(0, "[Error @ yfs.c @ mkDir]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
@@ -774,47 +788,83 @@ int mkDir(char * pathname, int pathNameLen){
 
 	TracePrintf(0, "[Testing @ yfs.c @ mkDir]: try to make directory full path: %s, actual path needs to be created: %s\n", pathname, fileName);
 		//fileName is the directory we need to create:
-	int fileInodeNum = readDirectory(lastExistingDir, fileName, fileNameCount);	
-	if(fileInodeNum == 0)
+	
+	//int fileInodeNum = readDirectory(lastExistingDir, fileName, fileNameCount);	
+	if(fileNameCount == 0)
 	{
-		//file not found, make a new file
-		//create a newInode for the new file
-		int newInodeNum = getFreeInode(); //allocate inode num 
-		struct inode *inode = readInode(newInodeNum);
-		inode -> type = INODE_DIRECTORY;
-		inode -> nlink = 1; 
-		inode -> size = 0;
-		writeInode(newInodeNum, inode);	
-
-		//create a new dir_entry for the new file
-		struct dir_entry *newDirEntry;
-		newDirEntry = malloc(sizeof(struct dir_entry));
-		newDirEntry -> inum = newInodeNum;
-
-		//this part may be substituted by a c libaray function
-		int i;
-		for(i = 0; i<DIRNAMELEN; i++)
-		{
-			newDirEntry -> name[i] = fileName[i];
-		}
-
-		TracePrintf( 0, "[Testing @ yfs.c @ CreateFile]: new dir_entry created: inum(%d), name(%s)\n", newDirEntry -> inum, newDirEntry -> name );
-		writeNewEntryToDirectory(directoryInodeNum, newDirEntry);//TODO, not always ROOTINODE
+		//This means the directory already exists
+		TracePrintf(0, "[Error @ yfs.c @ mkDir]: Trying to create a directory that already exists, pathname(%s)\n", pathname);
+		return ERROR;
 	}
 	else
 	{	
-	TracePrintf(0, "[Testing @ yfs.c @ mkDir]: try to make directory full path: %s, actual path needs to be created: %s\n", pathname, fileName);
+		TracePrintf(0, "[Testing @ yfs.c @ mkDir]: try to make directory full path: %s, actual path needs to be created: %s\n", pathname, fileName);
+		//create a new directory with name 
+	
+		int fileInodeNum = readDirectory(lastExistingDir, fileName, fileNameCount);	
+		if(fileInodeNum == 0){
+			//file does not exist, create a new one
+			int newInodeNum = getFreeInode(); //allocate inode num 
+			struct inode *inode = readInode(newInodeNum);
+			inode -> type = INODE_DIRECTORY;
+			inode -> nlink =2; 
+			inode -> size = 0;
+			writeInode(newInodeNum, inode);	
+			//create a new dir_entry for the new file
+			struct dir_entry *newDirEntry;
+			newDirEntry = malloc(sizeof(struct dir_entry));
+			newDirEntry -> inum = newInodeNum;
+
+			//copy
+			memcpy(newDirEntry->name, fileName, DIRNAMELEN);
+				
+			TracePrintf( 0, "[Testing @ yfs.c @ mkDIr]: new dir_entry created: inum(%d), name(%s)\n", newDirEntry -> inum, newDirEntry -> name );
+			/* Add this directory entry to lastExistngDir which is the parent */
+			writeNewEntryToDirectory(lastExistingDir, newDirEntry);//TODO, not always ROOTINODE
+			free(newDirEntry);
+
+			/* Add . and .. into the new directory */
+			
+		//	writeInode(newInodeNum, inode);
+			newDirEntry = malloc(sizeof(struct dir_entry));
+			memset(newDirEntry->name, '\0', DIRNAMELEN);
+			memcpy(newDirEntry->name, ".", 1);
+			TracePrintf(0, "[Testing @ yfs.c @ mkDir]: added . to the dir we create at %s \n", fileName);
+			writeNewEntryToDirectory(newInodeNum, newDirEntry);
+			free(newDirEntry);
+
+			newDirEntry = malloc(sizeof(struct dir_entry));
+			memset(newDirEntry->name, '\0', DIRNAMELEN);
+			memcpy(newDirEntry->name, "..", 2);
+			TracePrintf(0, "[Testing @ yfs.c @ mkDir]: added .. to the dir we create at %s \n", fileName);
+			writeNewEntryToDirectory(newInodeNum, newDirEntry);
+			free(newDirEntry);
+			free(fileName);
+			return  0;
+		}else{
+			TracePrintf(0, "[Error @ yfs.c @ mkDir]: try to make a direcotry path: %s, but already exists\n", pathname);
+			return  ERROR;
+		}
 	}
+
+	fileNameCount = 0;
+	//memset(fileName, '\0', DIRNAMELEN);
+	free(fileName);
 	return 0;
+
 }
 
 // Change to a new dir
 
 int chDir(char *pathname, int pathNameLen){
-	 TracePrintf(0, "[Testing @ yfs.c @ chDir] Entering Chdir\n");
+	int fileNameCount;
+	char *fileName = malloc(sizeof(char)*DIRNAMELEN);
+	memset(fileName, '\0', DIRNAMELEN);
+	
+	 TracePrintf(0, "[Testing @ yfs.c @ chDir] Entering Chdir, requesting %s\n", pathname);
 	int lastExistingDir;
-	int directoryInodeNum = gotoDirectory(pathname, pathNameLen, &lastExistingDir);
-
+	int directoryInodeNum = gotoDirectory(pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName);
+	
 	if(directoryInodeNum  == ERROR){
 			TracePrintf(0, "[Error @ yfs.c @ chDir]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
 		return ERROR;
@@ -832,7 +882,7 @@ int chDir(char *pathname, int pathNameLen){
 		  
 		//try to goto fileName as a directory;
 		int fileInodeNumber = readDirectory(lastExistingDir, fileName, fileNameCount);
-		if(fileInodeNumber <= 0){
+		if(fileInodeNumber == 0){
 			TracePrintf(0, "[Error @ yfs.c @ chDir]: file not found: %s, full path reqeusted: %s\n", fileName, pathname);
 			return ERROR;
 		}
@@ -848,6 +898,9 @@ int chDir(char *pathname, int pathNameLen){
 	}
 	//when fileNameCount != 0, 
 	TracePrintf(0, "[Error @ yfs.c @ chDir]: path not found (%s), full name(%s)\n", fileName,pathname);
+	fileNameCount = 0;
+	free(fileName);
+	//memset(fileName, 0, DIRNAMELEN);
 	return ERROR;
 
 }
@@ -855,22 +908,108 @@ int chDir(char *pathname, int pathNameLen){
 //remove a directory
 int rmDir(char* pathname, int pathNameLen){
 	int lastExistingDir;
-	int directoryInodeNum = gotoDirectory(pathname, pathNameLen, &lastExistingDir);
-
+	int fileNameCount;
+	char *fileName = malloc(sizeof(char)*DIRNAMELEN);
+	memset(fileName, '\0', DIRNAMELEN);
+	memset(fileName, '\0', DIRNAMELEN);
+	
+	int directoryInodeNum = gotoDirectory(pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName);
 	if(directoryInodeNum == ERROR){
 		  TracePrintf(0, "[Error @ yfs.c @ rmDir]: directoryInodeNum is Error: pathname: %s, filename: %s\n", pathname, fileName);
 		  return ERROR;
 	}
 
-	if(fileNameCount == 0){
-		  //lastExistingDir is what we want to remove
-
-	}
-
+	
+		//just remove lastExisting dir
+		struct inode * temp;
+		if(fileNameCount==0){
+			temp = readInode(lastExistingDir);//TODO: free this
+			
+		}else{
+			int dir = readDirectory(lastExistingDir, fileName, fileNameCount);
+			if(dir == 0 ){
+				  TracePrintf(0, "[Error @ yfs.c @ rmDir]: non existing dir requested : (%s)\n", pathname);
+				  return ERROR;
+			}
+			temp = readInode(dir);
+			if(temp->type != INODE_DIRECTORY){
+				TracePrintf(0, "[Error @ yfs.c @ rmDir]: try to remove non directory: (%s)\n", pathname);  
+				return ERROR;
+			}
+			
+		}
+		temp->type = INODE_FREE;
+		if(temp->indirect != 0){
+			  //TODO: free all the indirect inodes
+		}
+		int i;
+		for(i=0; i<NUM_DIRECT; i++){
+			  if(temp->direct[i] == 0){
+				break;
+			  }
+			  //TODO: mark direct[i] block free
+			  temp->direct[i]=0;
+		}
+		writeInode(lastExistingDir, temp);
+//TODO: mark temp as a free in the free list
+	free(fileName);
 	return 0;
 
 }
 
+
+int yfsRead(int inode){
+	TracePrintf(0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n");	  
+	return 0;
+}
+
+int yfsWrite(int inode){
+	TracePrintf(0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n");	  
+	return 0;	  
+
+}
+
+int link(struct Message * msg){
+		TracePrintf(0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n");	  
+	return 0;	  
+  
+
+}
+
+int unlink(char * pathname, int pathnamelen){
+	  	TracePrintf(0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n");	  
+	return 0;	  
+
+
+}
+
+int symLink(struct Message *msg){
+	  	TracePrintf(0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n");	  
+	return 0;	  
+
+
+}
+
+int readLink(struct Message *msg){
+	  	TracePrintf(0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n");	  
+	return 0;	  
+
+
+}
+
+int stat(struct Message *msg){
+	  	TracePrintf(0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n");	  
+	return 0;	  
+
+
+}
+
+int sync(){
+	  
+		TracePrintf(0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n");	  
+	return 0;	  
+//SYNC THE CACHE
+}
 /* End of yfs server calls */
 
 void addressMessage( int pid, struct Message *msg )
@@ -931,15 +1070,18 @@ void addressMessage( int pid, struct Message *msg )
 			break;
 		case UNLINK:
 			//TODO: UNLINK
+			//
+			unlink(pathname, len);
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message UNLINK: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case MKDIR:
 			//TODO: MIDIR
-			mkDir(pathname, len);
+			msg->returnStatus = mkDir(pathname, len);
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message MKDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case RMDIR:
-			//TODO: RMDIR
+			//TODO: RMDIRi
+			msg->returnStatus=rmDir(pathname, len);
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message RMDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			break;
 		case CHDIR:
@@ -998,14 +1140,14 @@ int main( int argc, char **argv )
 		TracePrintf( 0, "[Error @ yfs.main]: unsuccessfully register the YFS as the FILE_SERVER.\n" );
 	}
 	//set the current workingDirectoryInodeNumber to be ROOTINODE
-	workingDirectoryInodeNumber = ROOTINODE;
+//	workingDirectoryInodeNumber = ROOTINODE;
 //	printDisk( 1500, "main.c" );
 	calculateFreeBlocksAndInodes();
 	
 
 	//set all char in fileName \0, 
 	//TODO: check understanding
-	memset(fileName, '\0', DIRNAMELEN);
+//	memset(fileName, '\0', DIRNAMELEN);
 	int pid = Fork();
 	if( pid == 0 )
 	{
@@ -1028,6 +1170,7 @@ int main( int argc, char **argv )
 			TracePrintf( 500, "Sender: %d\n", sender );
 			addressMessage( sender, msg );
 			Reply( msg, sender );
+			
 		}
 	}
 

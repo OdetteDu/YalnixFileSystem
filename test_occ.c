@@ -7,7 +7,7 @@
 int main(int argc, char **argv)
 {
 	printf("Hello, World!\n");
-	int fd =Create("odette");
+	int fd =Create("/odette");
 	int fd2 = Open("odette");
 	Close(fd);
 	Close(fd2);
