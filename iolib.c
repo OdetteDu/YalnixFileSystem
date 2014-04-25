@@ -680,6 +680,7 @@ extern int Shutdown()
 	}
 
 	TracePrintf( 500, "[Testing @ iolib.h @ Shutdown]: Reply: messageType(%d)\n", msg.messageType );
+	Exit(0);
 	return 0;
 }
 

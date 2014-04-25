@@ -1510,6 +1510,8 @@ int symLink(int curDir, char *oldname, int oldnamelen, char* newname, int newnam
 	struct inode * symLinkNode = readInode(newSymLinkInodeNum);
 	symLinkNode->type = INODE_SYMLINK;
 //TODO: WRITE THE OLDNAME INTO THE Symlinknode;
+	int curPos = 0;
+	writeFile(newSymLinkInodeNum, &curPos, oldname, oldnamelen);
 	writeInode(newSymLinkInodeNum, symLinkNode);
 	free(symLinkNode);
 	return 0;
@@ -1723,6 +1725,9 @@ void addressMessage( int pid, struct Message *msg )
 		case SHUTDOWN:
 			//TODO: SHUTDOWN
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SHUTDOWN: type(%d)\n", type );
+			TtyWrite(0, "YFS shutting down now", 22);
+			printf("YFS shutting down now");
+			Exit(0);
 			break;
 	}
 	if(pathnameMalloc == 1){
