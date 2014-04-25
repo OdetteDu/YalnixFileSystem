@@ -7,14 +7,22 @@
 #include "global.h"
 
 /* Global Variables */
+//<<<<<<< HEAD
 //struct Message *msg;
 //char *pathname;
+//=======
+int numInodes;
+int numBlocks;
+
+//struct Message *msg;
+//char *pathname;
+//>>>>>>> 8d72dc280fc188e2ed750782319967ce13c6c894
 //char fileName[DIRNAMELEN];
 //int fileNameCount;
 
 //the working directory inode number is the ROOTINODE at the 
 // beginning of things....
-int workingDirectoryInodeNumber = ROOTINODE;
+//int workingDirectoryInodeNumber = ROOTINODE;
 /* Initialize the linkedIntList */
 LinkedIntList* isInodeFreeHead = NULL;
 LinkedIntList* isBlockFreeHead = NULL;
@@ -320,8 +328,8 @@ void calculateFreeBlocksAndInodes()
 
 //Get total number of inodes and blocks from fs_header
 	struct fs_header *fsHeader = (struct fs_header *) buf;
-	int numInodes = fsHeader->num_inodes;
-	int numBlocks = fsHeader->num_blocks;
+	numInodes = fsHeader->num_inodes;
+	numBlocks = fsHeader->num_blocks;
 	int *isInodeFree = malloc( sizeof(int) * numInodes+1 );
 	int *isBlockFree = malloc( sizeof(int) * numBlocks );
 
@@ -480,6 +488,7 @@ char* readBlock( int blockNum )
 	if( readBlockStatus != 0 )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ readBlock]: Read block %d unsuccessfully\n", blockNum );
+		return ERROR;
 	}
 	//TODO: free buf at any call to readBlock after use
 	return buf;
@@ -501,6 +510,11 @@ int writeBlock( int blockNum, char *buf )
 /* Read and write for inode */
 struct inode* readInode( int inodeNum )
 {
+	if(inodeNum == 0 || inodeNum > numInodes )
+	{
+		TracePrintf(0, "[Error @ yfs.c @readInode]: inodeNum %d is illegal\n", inodeNum );
+		return NULL;
+	}
 	//TODO: need to check is the inode Num is valid, if the inode read is correct, should return NULL if encounter any error
 	int blockNum = getBlockNumInodeIn( inodeNum );
 
@@ -617,7 +631,7 @@ int getUsedBlocks( struct inode *inode, int **usedBlocks )
 
 //return the last directory's inode number
 //This method also changes fileName and fileNameCount
-int gotoDirectory( char *pathname, int pathNameLen, int* lastExistingDir, int * fileNameCount, char** fileName )
+int gotoDirectory(int workingDirectoryInodeNumber, char *pathname, int pathNameLen, int* lastExistingDir, int * fileNameCount, char** fileName )
 {
 	int i;
 	int lastDirectoryInodeNum;
@@ -707,7 +721,6 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 			inode->type, inode->nlink, inode->size, inode->direct[0], inode->indirect );
 	printInode( 400, inodeNum, "readDirectory", inode );
 	int *usedBlocks = malloc( sizeof(int) );		//remember to free this thing somewhere later
-
 	//need to check if get used blocks successfully, the inode may be a free inode
 	int usedBlocksCount = getUsedBlocks( inode, &usedBlocks );
 	TracePrintf( 300, "[Testing @ yfs.c @ readDirectory]: usedBlockCount: %d\n", usedBlocksCount );
@@ -816,14 +829,14 @@ int writeNewEntryToDirectory( int inodeNum, struct dir_entry *newDirEntry )
 }
 
 /* YFS Server calls corresponding to the iolib calls */
-int createFile( char *pathname, int pathNameLen )
+int createFile(int curDir,  char *pathname, int pathNameLen )
 {
 	int lastExistingDir;
 	char *fileName = malloc( sizeof(char) * DIRNAMELEN );
 	memset( fileName, '\0', DIRNAMELEN );
 	int fileNameCount = 0;
 
-	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
+	int directoryInodeNum = gotoDirectory(curDir, pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
 	if( directoryInodeNum == ERROR )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ CreateFile]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
@@ -885,14 +898,14 @@ int createFile( char *pathname, int pathNameLen )
 
 //Open file or a directory
 
-int openFileOrDir( char *pathname, int pathNameLen )
+int openFileOrDir(int curDir, char *pathname, int pathNameLen )
 {
 	int lastExistingDir;
 	int fileNameCount = 0;
 	char *fileName = malloc( sizeof(char) * DIRNAMELEN );
 	//fill in fileName and fileName count;
 	memset( fileName, '\0', DIRNAMELEN );
-	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
+	int directoryInodeNum = gotoDirectory( curDir,pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
 	if( directoryInodeNum == ERROR )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ CreateFile]: directoryInodeNum is Error: pathname: %s fileName: %s\n", pathname, fileName );
@@ -914,7 +927,7 @@ int openFileOrDir( char *pathname, int pathNameLen )
 }
 // Make a directory
 
-int mkDir( char * pathname, int pathNameLen )
+int mkDir(int curDir, char * pathname, int pathNameLen )
 {
 
 	TracePrintf( 0, "[Testing @ yfs.c @ mkDir] Entering Mkdir, requesting %s\n", pathname );
@@ -924,7 +937,7 @@ int mkDir( char * pathname, int pathNameLen )
 
 	int lastExistingDir;
 	//get to the last eixisting directory
-	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
+	int directoryInodeNum = gotoDirectory(curDir, pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
 
 	if( directoryInodeNum == ERROR )
 	{
@@ -1014,10 +1027,10 @@ int mkDir( char * pathname, int pathNameLen )
 /*
  }*/
 
-int chDir( char* pathname, int pathNameLen )
+int chDir(int curDir,  char* pathname, int pathNameLen )
 {
 	//First open the directory
-	int dir = openFileOrDir( pathname, pathNameLen );
+	int dir = openFileOrDir(curDir, pathname, pathNameLen );
 	if( dir == ERROR )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ chDir] cannot open path %s\n", pathname );
@@ -1041,9 +1054,9 @@ int chDir( char* pathname, int pathNameLen )
 /*int rmDir( char* pathname, int pathNameLen )
 }*/
 
-int rmDir(char *pathname, int pathnamelen){
+int rmDir(int curDir, char *pathname, int pathnamelen){
 	 //check that directory exists 
-	int openDir = openFileOrDir(pathname, pathnamelen);
+	int openDir = openFileOrDir(curDir, pathname, pathnamelen);
 	if(openDir == ERROR){
 		  TracePrintf( 0, "[Error @ yfs.c @ rmDir]: failed to open directory (%s)\n", pathname);
 		  return ERROR;
@@ -1112,16 +1125,207 @@ int rmDir(char *pathname, int pathnamelen){
 	return 0;
 }
 
-int readFile( int inodeNum, int currentPos, char *buf, int bufSize )
+int readFile( int inodeNum, int *currentPos, char *buf, int bufSize )
 {
 	TracePrintf( 200, "[Testing @ yfs.c @ readFile]: Begin: inodeNum: %d, currentPos: %d, bufSize: %d, buf: %s\n", inodeNum, currentPos, bufSize, buf );
-	return 0;
+	int posInBuf = 0;
+	int posInFile = *currentPos;
+
+	struct inode *inode = readInode(inodeNum);
+	if(inode == NULL)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ readFile]: the inode %d is NULL\n", inodeNum);
+		return ERROR;
+	}
+
+	if(inode -> type == INODE_FREE)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ readFile]: the inode %d type is INODE_FREE\n", inodeNum);
+		return ERROR;
+	}
+
+	int currentFileSize = inode -> size;
+//	int currentNumBlockUsed = calculateNumBlocksUsed(currentFileSize);
+
+	int *usedBlocks = malloc( sizeof(int) );		//TODO:remember to free this thing somewhere later
+	int usedBlocksCount = getUsedBlocks( inode, &usedBlocks );
+	TracePrintf( 200, "[Testing @ yfs.c @ readFile]: usedBlockCount: %d\n", usedBlocksCount );
+	
+	int blockIndex = calculateNumBlocksUsed(*currentPos);
+	if(*currentPos % BLOCKSIZE != 0)
+	{
+		//1. read the current block until the block is full
+		int numBytesTobeReadInCurrentBlock = BLOCKSIZE - (*currentPos % BLOCKSIZE);	
+		if(numBytesTobeReadInCurrentBlock > bufSize)
+		{
+			numBytesTobeReadInCurrentBlock = bufSize;
+		}
+		int currentBlockNum = usedBlocks[blockIndex - 1];
+
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: Before read the current block: %d, posInBuf: %d\n", currentBlockNum, posInBuf);
+		char *currentBlockData = readBlock(currentBlockNum);
+		memcpy(buf, currentBlockData + (*currentPos % BLOCKSIZE), numBytesTobeReadInCurrentBlock);
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: Current Block %d After reading %d bytes: %s, buf: %s\n", currentBlockNum, numBytesTobeReadInCurrentBlock, currentBlockData, buf );
+		free(currentBlockData);
+
+		posInBuf += numBytesTobeReadInCurrentBlock;
+		posInFile += numBytesTobeReadInCurrentBlock;
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: After read the current block: %d, posInBuf: %d, posInFile: %d\n", currentBlockNum, posInBuf, posInFile);
+	}
+
+	//2. read the rest of the blocks  
+	while(posInBuf < bufSize && posInFile < currentFileSize)
+	{
+		int numBytesCanBeRead = currentFileSize - posInFile;
+		int numBytesTobeRead = bufSize - posInBuf; 
+
+		if(numBytesTobeRead > numBytesCanBeRead)
+		{
+			numBytesTobeRead = numBytesCanBeRead;
+		}
+
+		if(numBytesTobeRead > BLOCKSIZE)
+		{
+			numBytesTobeRead = BLOCKSIZE;
+		}
+
+		char *newData = readBlock(usedBlocks[blockIndex]);
+		memcpy( buf+posInBuf, newData, numBytesTobeRead);
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: Current Block %d:%d After reading %d bytes: %s, buf: %s\n", blockIndex, usedBlocks[blockIndex], numBytesTobeRead, newData, buf );
+		free(newData);
+		posInBuf += numBytesTobeRead;
+		posInFile += numBytesTobeRead;
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: After read the current block: %d:%d, posInBuf: %d, posInFile: %d\n", blockIndex, usedBlocks[blockIndex], posInBuf, posInFile);
+		blockIndex ++;
+	}
+
+	*currentPos = posInFile;
+	return posInBuf;
 }
 
-int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
+int writeFile( int inodeNum, int *currentPos, char *buf, int bufSize )
 {
 	TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: Begin: inodeNum: %d, currentPos: %d, bufSize: %d, buf: %s\n", inodeNum, currentPos, bufSize, buf );
-	return 0;
+
+	int posInBuf = 0;
+	int posInFile = *currentPos;
+
+	struct inode *inode = readInode(inodeNum);
+	if(inode == NULL)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ writeFile]: the inode %d is NULL\n", inodeNum);
+	}
+
+	if(inode -> type == INODE_FREE)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ writeFile]: the inode %d type is INODE_FREE\n", inodeNum);
+	}
+
+	int currentFileSize = inode -> size;
+	int newFileSize = *currentPos + bufSize; 
+	int currentNumBlockNeeded = calculateNumBlocksUsed(currentFileSize);
+	int newNumBlockNeeded = calculateNumBlocksUsed(newFileSize);
+
+	if(currentNumBlockNeeded < newNumBlockNeeded)
+	{
+		//need to expand the file
+		int numBlocksNeedToAllocate = newNumBlockNeeded - currentNumBlockNeeded;
+		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need to expand the file by %d blocks: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", numBlocksNeedToAllocate, currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
+
+		if(newNumBlockNeeded <= NUM_DIRECT)
+		{
+			int i;
+			for(i=currentNumBlockNeeded; i<newNumBlockNeeded; i++)
+			{
+				inode -> direct[i] = getFreeBlock(); 
+			}
+		}
+		else
+		{
+			TracePrintf(0, "[NIY @ yfs.c @ writeFile]: Need to expand to indirect block\n");
+		}
+	}
+	else if(currentNumBlockNeeded > newNumBlockNeeded)
+	{
+		//need to truncate the file 
+		int numBlocksNeedToFree = currentNumBlockNeeded - newNumBlockNeeded;
+
+		if(currentNumBlockNeeded <= NUM_DIRECT)
+		{
+			int i;
+			for(i=newNumBlockNeeded; i<currentNumBlockNeeded; i++)
+			{
+				int tobeFree = inode -> direct[i]; 
+				inode -> direct[i] = 0;
+				addToFreeBlockList(tobeFree);//TODO: clean the block content before free the block
+			}
+		}
+		else
+		{
+			TracePrintf(0, "[NIY @ yfs.c @ writeFile]: Need to expand to indirect block\n");
+		}
+		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need to truncate the file by %d blocks: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", numBlocksNeedToFree, currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
+	}
+	else
+	{
+		//need not adjust the blocks
+		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need not adjust the file: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
+	}
+
+	inode -> size = newFileSize;
+	writeInode(inodeNum, inode);
+	printInode(200, inodeNum, "writeFile", inode);
+	free(inode);
+
+	int *usedBlocks = malloc( sizeof(int) );		//TODO:remember to free this thing somewhere later
+	int usedBlocksCount = getUsedBlocks( inode, &usedBlocks );
+	TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: usedBlockCount: %d\n", usedBlocksCount );
+	
+	int blockIndex = calculateNumBlocksUsed(*currentPos);
+	if(*currentPos % BLOCKSIZE != 0)
+	{
+		//1. write the current block until the block is full
+		int numBytesTobeWriteInCurrentBlock = BLOCKSIZE - (*currentPos % BLOCKSIZE);	
+		if(numBytesTobeWriteInCurrentBlock > bufSize)
+		{
+			numBytesTobeWriteInCurrentBlock = bufSize;
+		}
+		int currentBlockNum = usedBlocks[blockIndex - 1];
+
+		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: Before write the current block: %d, posInBuf: %d\n", currentBlockNum, posInBuf);
+		char *currentBlockData = readBlock(currentBlockNum);
+		memcpy(currentBlockData + (*currentPos % BLOCKSIZE), buf, numBytesTobeWriteInCurrentBlock);
+		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: Current Block %d After Writing %d bytes: %s\n", currentBlockNum, numBytesTobeWriteInCurrentBlock, currentBlockData );
+		writeBlock(currentBlockNum, currentBlockData);
+		free(currentBlockData);
+
+		posInBuf += numBytesTobeWriteInCurrentBlock;
+		posInFile += numBytesTobeWriteInCurrentBlock;
+		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: After write the current block: %d, posInBuf: %d, posInFile:%d\n", currentBlockNum, posInBuf, posInFile);
+	}
+
+	//2. write the rest of the blocks  
+	while(posInBuf < bufSize)
+	{
+		int numBytesTobeWrite = bufSize - posInBuf; 
+		if(numBytesTobeWrite > BLOCKSIZE)
+		{
+			numBytesTobeWrite = BLOCKSIZE;
+		}
+
+		char *newData = malloc(sizeof(char) * BLOCKSIZE);
+		memcpy(newData, buf+posInBuf, numBytesTobeWrite);
+		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: Current Block %d:%d After Writing %d bytes: %s\n", blockIndex, usedBlocks[blockIndex], numBytesTobeWrite, newData );
+		writeBlock(usedBlocks[blockIndex], newData);
+		free(newData);
+		posInBuf += numBytesTobeWrite;
+		posInFile += numBytesTobeWrite;
+		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: After write the current block: %d:%d, posInBuf: %d, posInFile:%d\n", blockIndex, usedBlocks[blockIndex], posInBuf, posInFile);
+		blockIndex ++;
+	}
+	
+	*currentPos = posInFile;
+	return posInBuf;
 }
 
 /* Link implementation at server side
@@ -1134,7 +1338,7 @@ int link(int curDir, char *oldname, int oldnamelen, char* newname, int newnamele
 	int fileNameCount = 0;
 	TracePrintf(0, "[Testing @ yfs.c @ link]:Entering link, reqeusting oldname(%s), newname(%s)\n", oldname, newname);
 
-	int oldInodeNum = openFileOrDir(oldname, oldnamelen);
+	int oldInodeNum = openFileOrDir(curDir,oldname, oldnamelen);
 	if(oldInodeNum == ERROR){
 		TracePrintf(0, "[Error @ yfs.c @ link]: Cannot find oldpathname:(%s)\n", oldname);
 		free(fileName);
@@ -1150,7 +1354,7 @@ int link(int curDir, char *oldname, int oldnamelen, char* newname, int newnamele
 	}
 	/* Need to check if new path already exists */
 
-	int checkNewPath = openFileOrDir(newname, newnamelen);
+	int checkNewPath = openFileOrDir(curDir,newname, newnamelen);
 	if(checkNewPath != ERROR){
 		  TracePrintf(0, "[Error @ yfs.c @ link]: newpathname already exists(%s) inodenum(%d)\n", newname, checkNewPath);
 		free(fileName);
@@ -1158,7 +1362,7 @@ int link(int curDir, char *oldname, int oldnamelen, char* newname, int newnamele
 	}
 
 	//TODO: pass in the current directory
-	int findDir = gotoDirectory(newname, newnamelen, &lastExistingDir, &fileNameCount, &fileName);
+	int findDir = gotoDirectory(curDir,newname, newnamelen, &lastExistingDir, &fileNameCount, &fileName);
 	if(findDir == ERROR){
 		  TracePrintf(0, "[Testing @ yfs.c @ link]: did not find last dir in newname %s\n", fileName);
 		  free(fileName);
@@ -1197,7 +1401,7 @@ int link(int curDir, char *oldname, int oldnamelen, char* newname, int newnamele
 
 }
 
-int unlink( char * pathname, int pathnamelen, struct Message * msg )
+int unlink(int curDir, char * pathname, int pathnamelen, struct Message * msg )
 {
 	//TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
 	TracePrintf( 0, "[Testing @ yfs.c @ unlink]: Entering unlik for (%s) pathname\n", pathname );
@@ -1206,7 +1410,7 @@ int unlink( char * pathname, int pathnamelen, struct Message * msg )
 	int fileNameCount = 0;
 	int lastExistingDir;
 
-	int findDir = gotoDirectory( pathname, pathnamelen, &lastExistingDir, &fileNameCount, &fileName );
+	int findDir = gotoDirectory( curDir,pathname, pathnamelen, &lastExistingDir, &fileNameCount, &fileName );
 	if( findDir == ERROR )
 	{
 		//need to contii
@@ -1220,6 +1424,7 @@ int unlink( char * pathname, int pathnamelen, struct Message * msg )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ unlink]: the pathname ends with a directory %s pathnam\n" );
 		free( fileName );
+//}
 		return ERROR;
 	}
 	else
@@ -1289,13 +1494,13 @@ int unlink( char * pathname, int pathnamelen, struct Message * msg )
 
 }
 
-int symLink(char *oldname, int oldnamelen, char* newname, int newnamelen)
+int symLink(int curDir, char *oldname, int oldnamelen, char* newname, int newnamelen)
 {
 //	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
 	TracePrintf(0, "[Testing @ yfs.c @ symLink]: Entering symLink: oldname(%s) oldlen(%d), newname(%s), newlen(%d)\n", oldname, oldnamelen, newname, newnamelen);
 	
 	//first create the symlink file
-	int newSymLinkInodeNum = createFile(newname, newnamelen);
+	int newSymLinkInodeNum = createFile(curDir,newname, newnamelen);
 	
 	if(newSymLinkInodeNum == ERROR){
 		  TracePrintf(0, "[Error @ yfs.c @ symLink]: Unable to create newpathname: (%s)\n",newname);
@@ -1331,11 +1536,30 @@ int seek(int inodeNum)
 	return size;
 }
 
-int stat( struct Message *msg )
+struct Stat *getFileStat(int curDir, char *pathname, int pathNameLen )
 {
-	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
-	return 0;
+	int inodeNum = openFileOrDir(curDir,pathname, pathNameLen);
 
+	struct inode *inode = readInode(inodeNum);
+	if(inode == NULL)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ stat]: the inode %d is NULL\n", inodeNum);
+	}
+
+	if(inode -> type == INODE_FREE)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ stat]: the inode %d type is INODE_FREE\n", inodeNum);
+	}
+
+	struct Stat *stat = malloc(sizeof(struct Stat));
+	stat -> inum = inodeNum;
+	stat -> type = inode -> type;
+	stat -> size = inode -> size;
+	stat -> nlink = inode -> nlink;
+
+	TracePrintf(150, "[Testing @ yfs.c @ Stat]: Finished: pathname: %s, pathNameLen: %d, Stat: inum(%d), type(%d), size(%d), nlink(%d)\n", pathname, pathNameLen, stat -> inum, stat -> type, stat -> size, stat -> nlink);
+
+	return stat;
 }
 
 int sync()
@@ -1398,43 +1622,54 @@ void addressMessage( int pid, struct Message *msg )
 		currentPos = msg->len;
 	}
 
+	curDir = msg->inode;//NOTEl DO NOT USE THIS IN READ WIRTE SEEK
 	switch( type )
 	{
 		case OPEN:
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message OPEN: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 
 			//TODO:OPEN
-			msg->inode = openFileOrDir( pathname, len );
+			msg->inode = openFileOrDir(curDir, pathname, len );
 			break;
 		case CREATE:
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CREATE: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
-			msg->inode = createFile( pathname, len );
+			msg->inode = createFile(curDir, pathname, len );
 			break;
 		case UNLINK:
 			//TODO: UNLINK
 			//
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message UNLINK: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
-			unlink( pathname, len, msg );
+			unlink(curDir,  pathname, len, msg );
 			break;
 		case MKDIR:
 			//TODO: MIDIR
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message MKDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
-			msg->size = mkDir( pathname, len );
+			msg->size = mkDir(curDir, pathname, len );
 			break;
 		case RMDIR:
 			//TODO: RMDIRi
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message RMDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
-			msg->size = rmDir( pathname, len );
+			msg->size = rmDir(curDir, pathname, len );
 			break;
 		case CHDIR:
 			//TODO: CHDIR
 
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CHDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
-			msg->size = chDir( pathname, len );
+			msg->size = chDir(curDir, pathname, len );
 			break;
 		case STAT:
-			//TODO: STAT
-			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message STAT: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
+			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message STAT: type(%d), len(%d), pathname(%s), statbuf(%d)\n", type, len, pathname, msg->buf );
+			struct Stat *stat = getFileStat(curDir,pathname, len);
+			if(stat == NULL)
+			{
+				msg -> size = ERROR;
+			}
+
+			if( CopyTo( pid, msg->buf, stat, sizeof(struct Stat) ) == ERROR )
+			{
+				TracePrintf( 0, "[Error @ yfs.c @ addressMessage]: copy stat to pid %d failure, size: %d, stat: %d, msg->buf: %d\n", pid, size, stat, msg->buf );
+			}
+			free(stat);
 			break;
 		case READLINK:
 			//TODO: READLINK
@@ -1445,24 +1680,36 @@ void addressMessage( int pid, struct Message *msg )
 			//TODO: LINK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message LINK: type(%d), oldLen(%d), oldName(%s), newLen(%d), newName(%s)\n", type,
 					len, pathname, size, buf );
-			msg->size = link(workingDirectoryInodeNumber, pathname, len, buf, size);
+			msg->size = link(curDir, pathname, len, buf, size);
 			break;
 		case SYMLINK:
 			//TODOZ: SYMLINK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SYMLINK: type(%d), oldLen(%d), oldName(%s), newLen(%d), newName(%s)\n",
 					type, len, pathname, size, buf );
+			
+			symLink(curDir, pathname, len, buf, size);
 			break;
 		case READ:
 			//TODO: READ
-			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
+			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Message READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
 					currentPos, size, buf );
-			readFile(inode, currentPos, buf, size);
+			msg -> size = readFile(inode, &currentPos, buf, size);
+			msg -> len = currentPos;
+			if( CopyTo( pid, msg->buf, buf, size ) == ERROR )
+			{
+				TracePrintf( 0, "[Error @ yfs.c @ addressMessage]: copy buf to pid %d failure, size: %d, buf: %d, msg->buf: %d\n", pid, size, buf, msg->buf );
+			}
+			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Reply READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
+					currentPos, size, buf );
 			break;
 		case WRITE:
 			//TODO: WRITE
-			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
+			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Message WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
 					currentPos, size, buf );
-			writeFile(inode, currentPos, buf, size);
+			msg -> size = writeFile(inode, &currentPos, buf, size);
+			msg -> len = currentPos;
+			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Reply WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
+					currentPos, size, buf );
 			break;
 		case SEEK:
 			//TODO: SEEK
