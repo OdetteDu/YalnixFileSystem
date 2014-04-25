@@ -8,10 +8,12 @@ int main(int argc, char **argv)
 {
 	printf("Hello, World!\n");
 	int fd =Create("/odette");
-	int fd2 = Open("odette");
+	//int fd2 = Open("odette");
+	int fd2 = Create("lalalallaallalla");
 	Close(fd);
 	Close(fd2);
 	
+	Link("odette", "link_it");
 	TracePrintf(500, "return from open\n");
 //	return 0;
 	Exit(0);

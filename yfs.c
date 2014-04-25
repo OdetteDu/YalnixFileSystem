@@ -7,8 +7,8 @@
 #include "global.h"
 
 /* Global Variables */
-struct Message *msg;
-char *pathname;
+//struct Message *msg;
+//char *pathname;
 //char fileName[DIRNAMELEN];
 //int fileNameCount;
 
@@ -1168,7 +1168,7 @@ int rmDir(char *pathname, int pathnamelen){
 	dir->type = INODE_FREE;//set this node free;
 	dir->nlink = 0; //TODO: delete all the hard links
 
-	int numBlocks = calculateNumBlocksUsed(dir);
+	int numBlocks = calculateNumBlocksUsed(dir->size);
 	int i;
 	for(i=0; i<NUM_DIRECT; i++){
 		if(dir->direct[i]!=0){
@@ -1408,9 +1408,11 @@ void addressMessage( int pid, struct Message *msg )
 	TracePrintf( 500, "[Testing @ yfs.c @ receiveMessage]: receive message typed %d\n", type );
 
 	int len;
-	char *pathname;
+	char *pathname = 0;
 	int size;
-	char *buf;
+	int pathnameMalloc = 0;
+	int bufMalloc = 0;
+	char *buf = 0;
 	int inode;
 	int currentPos;
 	int curDir = ROOTINODE;
@@ -1420,8 +1422,11 @@ void addressMessage( int pid, struct Message *msg )
 		//get pathname and len
 		len = msg->len;
 		pathname = malloc( sizeof(char) * len );
+		pathnameMalloc =1 ;
 		//TracePrintf(0, "[Testing @ yfs.c @ addressMessage]: pathname ptr (%p), pathname(%s)\n", msg->pathname, msg->pathname);
 		int copyFrom = CopyFrom( pid, pathname, msg->pathname, len );
+		
+		TracePrintf(0, "[Testing @ yfs.c @ addressMessage]: pathname ptr (%p), pathname(%s)\n",pathname, pathname);
 		if( copyFrom == ERROR )
 		{
 			TracePrintf( 0, "[Error @ yfs.c @ addressMessage]: copy pathname from pid %d failure\n", pid );
@@ -1433,6 +1438,7 @@ void addressMessage( int pid, struct Message *msg )
 		//get buf and size
 		size = msg->size;
 		buf = malloc( sizeof(char) * size );
+		bufMalloc = 1;
 		int copyFrom = CopyFrom( pid, buf, msg->buf, size );
 		if( copyFrom == ERROR )
 		{
@@ -1454,12 +1460,10 @@ void addressMessage( int pid, struct Message *msg )
 
 			//TODO:OPEN
 			msg->inode = openFileOrDir( pathname, len );
-			free(pathname);
 			break;
 		case CREATE:
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CREATE: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			msg->inode = createFile( pathname, len );
-			free(pathname);
 			break;
 		case UNLINK:
 			//TODO: UNLINK
@@ -1471,22 +1475,17 @@ void addressMessage( int pid, struct Message *msg )
 			//TODO: MIDIR
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message MKDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			msg->size = mkDir( pathname, len );
-			free(pathname);
 			break;
 		case RMDIR:
 			//TODO: RMDIRi
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message RMDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			msg->size = rmDir( pathname, len );
-		
-			free(pathname);
 			break;
 		case CHDIR:
 			//TODO: CHDIR
 
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message CHDIR: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
 			msg->size = chDir( pathname, len );
-			
-			free(pathname);
 			break;
 		case STAT:
 			//TODO: STAT
@@ -1502,8 +1501,6 @@ void addressMessage( int pid, struct Message *msg )
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message LINK: type(%d), oldLen(%d), oldName(%s), newLen(%d), newName(%s)\n", type,
 					len, pathname, size, buf );
 			msg->size = link(workingDirectoryInodeNumber, pathname, len, buf, size);
-			free(pathname);
-			free(buf);
 			break;
 		case SYMLINK:
 			//TODOZ: SYMLINK
@@ -1536,7 +1533,14 @@ void addressMessage( int pid, struct Message *msg )
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SHUTDOWN: type(%d)\n", type );
 			break;
 	}
-
+	if(pathnameMalloc == 1){
+		  free(pathname);
+		  pathnameMalloc = 0;
+	}
+	if(bufMalloc == 1){
+		  free(buf);
+		  bufMalloc = 0;
+	}
 //	free(msg);
 }
 
@@ -1555,7 +1559,7 @@ int main( int argc, char **argv )
 	//set all char in fileName \0, 
 	//TODO: check understanding
 //	memset(fileName, '\0', DIRNAMELEN);
-
+//	struct Message *msg;
 	int pid = Fork();
 	if( pid == 0 )
 	{
@@ -1563,10 +1567,11 @@ int main( int argc, char **argv )
 	}
 	else
 	{
-		msg = malloc( sizeof(struct Message) );
-		pathname = malloc( sizeof(char) * MAXPATHNAMELEN );
+//		msg = malloc( sizeof(struct Message) );
+//		pathname = malloc( sizeof(char) * MAXPATHNAMELEN );
 		while( 1 )
 		{
+			struct Message *msg = malloc(sizeof(struct Message));
 			TracePrintf( 500, "loop\n" );
 			int sender = Receive( msg );
 			if( sender == ERROR )
@@ -1578,7 +1583,7 @@ int main( int argc, char **argv )
 			TracePrintf( 500, "Sender: %d\n", sender );
 			addressMessage( sender, msg );
 			Reply( msg, sender );
-
+			free(msg);
 		}
 	}
 
