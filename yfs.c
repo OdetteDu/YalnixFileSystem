@@ -1185,12 +1185,16 @@ int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
 	else if(currentNumBlockNeeded > newNumBlockNeeded)
 	{
 		//need to truncate the file 
+		//TODO
 		int numBlocksNeedToFree = currentNumBlockNeeded - newNumBlockNeeded;
 		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need to truncate the file by %d blocks: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", numBlocksNeedToFree, currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
 	}
 	else
 	{
 		//need not adjust the blocks
+		inode -> size = newFileSize;
+		writeInode(inodeNum, inode);
+		printInode(200, inodeNum, "writeFile", inode);
 		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need not adjust the file: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
 	}
 
@@ -1203,6 +1207,10 @@ int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
 	{
 		//1. write the current block until the block is full
 		int numBytesTobeWriteInCurrentBlock = BLOCKSIZE - (currentPos % BLOCKSIZE);	
+		if(numBytesTobeWriteInCurrentBlock > bufSize)
+		{
+			numBytesTobeWriteInCurrentBlock = bufSize;
+		}
 		int currentBlockNum = usedBlocks[blockIndex - 1];
 
 		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: Before write the current block: %d, posInBuf: %d\n", currentBlockNum, posInBuf);
