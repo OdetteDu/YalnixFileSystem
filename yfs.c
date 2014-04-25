@@ -1251,8 +1251,22 @@ int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
 	else if(currentNumBlockNeeded > newNumBlockNeeded)
 	{
 		//need to truncate the file 
-		//TODO
 		int numBlocksNeedToFree = currentNumBlockNeeded - newNumBlockNeeded;
+
+		if(currentNumBlockNeeded <= NUM_DIRECT)
+		{
+			int i;
+			for(i=newNumBlockNeeded; i<currentNumBlockNeeded; i++)
+			{
+				int tobeFree = inode -> direct[i]; 
+				inode -> direct[i] = 0;
+				addToFreeBlockList(tobeFree);//TODO: clean the block content before free the block
+			}
+		}
+		else
+		{
+			TracePrintf(0, "[NIY @ yfs.c @ writeFile]: Need to expand to indirect block\n");
+		}
 		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need to truncate the file by %d blocks: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", numBlocksNeedToFree, currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
 	}
 	else
