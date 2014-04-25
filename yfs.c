@@ -1173,9 +1173,6 @@ int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
 			{
 				inode -> direct[i] = getFreeBlock(); 
 			}
-			inode -> size = newFileSize;
-			writeInode(inodeNum, inode);
-			printInode(200, inodeNum, "writeFile", inode);
 		}
 		else
 		{
@@ -1192,13 +1189,15 @@ int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
 	else
 	{
 		//need not adjust the blocks
-		inode -> size = newFileSize;
-		writeInode(inodeNum, inode);
-		printInode(200, inodeNum, "writeFile", inode);
 		TracePrintf(200, "[Testing @ yfs.c @ writeFile]: Need not adjust the file: currentFileSize: %d, currentNumBlockNeeded: %d, newFileSize: %d, newNumBlockNeeded: %d\n", currentFileSize, currentNumBlockNeeded, newFileSize, newNumBlockNeeded);
 	}
 
-	int *usedBlocks = malloc( sizeof(int) );		//remember to free this thing somewhere later
+	inode -> size = newFileSize;
+	writeInode(inodeNum, inode);
+	printInode(200, inodeNum, "writeFile", inode);
+	free(inode);
+
+	int *usedBlocks = malloc( sizeof(int) );		//TODO:remember to free this thing somewhere later
 	int usedBlocksCount = getUsedBlocks( inode, &usedBlocks );
 	TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: usedBlockCount: %d\n", usedBlocksCount );
 	
@@ -1218,6 +1217,7 @@ int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
 		memcpy(currentBlockData + (currentPos % BLOCKSIZE), buf, numBytesTobeWriteInCurrentBlock);
 		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: Current Block %d After Writing %d bytes: %s\n", currentBlockNum, numBytesTobeWriteInCurrentBlock, currentBlockData );
 		writeBlock(currentBlockNum, currentBlockData);
+		free(currentBlockData);
 
 		posInBuf += numBytesTobeWriteInCurrentBlock;
 //		posInFile += numBytesTobeWriteInCurrentBlock;
@@ -1237,7 +1237,7 @@ int writeFile( int inodeNum, int currentPos, char *buf, int bufSize )
 		memcpy(newData, buf+posInBuf, numBytesTobeWrite);
 		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: Current Block %d:%d After Writing %d bytes: %s\n", blockIndex, usedBlocks[blockIndex], numBytesTobeWrite, newData );
 		writeBlock(usedBlocks[blockIndex], newData);
-
+		free(newData);
 		posInBuf += numBytesTobeWrite;
 //		posInFile += numBytesTobeWrite;
 		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: After write the current block: %d:%d, posInBuf: %d\n", blockIndex, usedBlocks[blockIndex], posInBuf);
