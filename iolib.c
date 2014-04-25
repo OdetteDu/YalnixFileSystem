@@ -302,11 +302,37 @@ extern int Seek( int fd, int offset, int whence )
 extern int Link( char *oldname, char *newname )
 {
 	struct Message msg;
+	int oldlen, newlen;
+	TracePrintf(0, "[Testing @ iolib.c @ Link]: Entering Link: oldname(%s), newname(%s)\n", oldname, newname);
+
+	char* oldCopy;
+	char* newCopy;
+
+	/* Get the length of the the two pathnames */
+	if( (oldlen = getPathnameLength( oldname )) == ERROR)
+		return ERROR;
+	if( (newlen = getPathnameLength( newname )) == ERROR)
+		return ERROR;
+	
+	/* Malloc and copy in */
+
+	if( (oldCopy = malloc( (oldlen+1)*sizeof(char))) == NULL){
+		  TracePrintf(0, "[Error @ iolib.c @ Link]: Failed to malloc for oldname copy\n");
+		  return ERROR;
+	}
+	if( (newCopy = malloc( (newlen+1) * sizeof(char))) == NULL){
+		  TracePrintf(0, "[Error @ iolib.c @ Link]: Failed to malloc for newname copy\n");
+		  return ERROR;
+	}
+
+	memcpy( oldCopy, oldname, oldlen+1);
+	memcpy( newCopy, newname, newlen+1);
+
 	msg.messageType = LINK;
-	msg.pathname = oldname;
-	msg.len = strlen( oldname );
-	msg.buf = newname;
-	msg.size = strlen( newname );
+	msg.pathname = oldCopy;
+	msg.len = oldlen +1;
+	msg.buf = newCopy;
+	msg.size = newlen +1;
 
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
@@ -314,6 +340,10 @@ extern int Link( char *oldname, char *newname )
 		TracePrintf( 0, "[Error @ iolib.h @ Link]: The send status is Error.\n" );
 		return ERROR;
 	}
+
+	//TODO: need to verify return status;
+	free(oldCopy);
+	free(newCopy);
 	return 0;
 }
 
@@ -370,6 +400,8 @@ extern int ReadLink( char *pathname, char *buf, int size )
 	return 0;
 }
 
+/* Implementation of MkDir */
+/* Copy done*/
 extern int MkDir( char *pathname )
 {
 	struct Message msg;
