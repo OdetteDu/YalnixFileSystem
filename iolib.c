@@ -366,19 +366,49 @@ extern int Unlink( char *pathname )
 extern int SymLink( char *oldname, char *newname )
 {
 	struct Message msg;
-	msg.messageType = SYMLINK;
-	msg.pathname = oldname;
-	msg.len = strlen( oldname );
-	msg.buf = newname;
-	msg.size = strlen( newname );
+
+	int oldlen, newlen;
+	char* oldCopy;
+	char* newCopy;
+
+	TracePrintf(0, "[Testing @ iolib.c @ SymLink]: Entering symLink: oldname(%s), newname(%s)\n", oldname, newname);
+
+/* Get the length of the the two pathnames */
+	if( (oldlen = getPathnameLength( oldname )) == ERROR)
+		return ERROR;
+	if( (newlen = getPathnameLength( newname )) == ERROR)
+		return ERROR;
+	
+	/* Malloc and copy in */
+
+	if( (oldCopy = malloc( (oldlen+1)*sizeof(char))) == NULL){
+		  TracePrintf(0, "[Error @ iolib.c @ symLink]: Failed to malloc for oldname copy\n");
+		  return ERROR;
+	}
+	if( (newCopy = malloc( (newlen+1) * sizeof(char))) == NULL){
+		  TracePrintf(0, "[Error @ iolib.c @ symLink]: Failed to malloc for newname copy\n");
+		  return ERROR;
+	}
+
+	memcpy( oldCopy, oldname, oldlen+1);
+	memcpy( newCopy, newname, newlen+1);
+
+	msg.messageType = LINK;
+	msg.pathname = oldCopy;
+	msg.len = oldlen +1;
+	msg.buf = newCopy;
+	msg.size = newlen +1;
 
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
 	{
-		TracePrintf( 0, "[Error @ iolib.h @ SymLink]: The send status is Error.\n" );
+		TracePrintf( 0, "[Error @ iolib.h @ symLink]: The send status is Error.\n" );
 		return ERROR;
 	}
 
+	//TODO: need to verify return status;
+	free(oldCopy);
+	free(newCopy);
 	return 0;
 }
 
@@ -447,6 +477,12 @@ extern int ChDir( char *pathname )
 
 	TracePrintf(0, "[Testing @ iolib.c @ ChDir]: Entring ChDir: pathname(%s)\n", pathname);
 
+
+	//check /
+	// check .
+	// chekc ..
+	//
+
 	//get the length of pathname
 	if( (length = getPathnameLength( pathname )) == ERROR){
 		  return ERROR;
@@ -478,10 +514,35 @@ extern int ChDir( char *pathname )
 
 extern int RmDir( char *pathname )
 {
+	
 	struct Message msg;
-	msg.messageType = RMDIR;
-	msg.pathname = pathname;
-	msg.len = strlen( pathname );
+	int length;
+	char* pathCopy;
+
+	TracePrintf(0, "[Testing @ iolib.c @ RmDir]: Entring RmDir: pathname(%s)\n", pathname);
+
+
+	//check /
+	// check .
+	// chekc ..
+	//
+
+	//get the length of pathname
+	if( (length = getPathnameLength( pathname )) == ERROR){
+		  return ERROR;
+	}
+	
+	//malloc and copy
+	if( (pathCopy = malloc( (length+1) * sizeof(char))) == NULL){
+		  TracePrintf(0, "[Error @ iolib.c @ RmDir]: cannot malloc for pathcopy\n");
+		  return ERROR;
+	}
+	memcpy(pathCopy, pathname, length+1);
+
+
+	msg.messageType = CHDIR;
+	msg.pathname = pathCopy;
+	msg.len = length+1;
 
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
@@ -489,6 +550,9 @@ extern int RmDir( char *pathname )
 		TracePrintf( 0, "[Error @ iolib.h @ RmDir]: The send status is Error.\n" );
 		return ERROR;
 	}
+
+	//TODO: checkReturn status
+	free(pathCopy);
 	return 0;
 }
 

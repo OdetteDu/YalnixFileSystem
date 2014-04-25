@@ -486,6 +486,7 @@ char* readBlock( int blockNum )
 }
 
 int writeBlock( int blockNum, char *buf )
+	
 {
 	int writeBlockStatus = WriteSector( blockNum, buf );
 	if( writeBlockStatus != 0 )
@@ -728,8 +729,10 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 			int compare = strncmp( dirEntry->name, filename, DIRNAMELEN );
 			if( compare == 0 )
 			{
+				int a = dirEntry->inum;
 				//match found
-				return dirEntry->inum;
+				free(buf);
+				return a;
 			}
 
 			index++;
@@ -1036,63 +1039,6 @@ int chDir( char* pathname, int pathNameLen )
 
 //remove a directory
 /*int rmDir( char* pathname, int pathNameLen )
-{
-	int lastExistingDir;
-	int fileNameCount = 0;
-	char *fileName = malloc( sizeof(char) * DIRNAMELEN );
-	memset( fileName, '\0', DIRNAMELEN );
-	memset( fileName, '\0', DIRNAMELEN );
-
-	int directoryInodeNum = gotoDirectory( pathname, pathNameLen, &lastExistingDir, &fileNameCount, &fileName );
-	if( directoryInodeNum == ERROR )
-	{
-		TracePrintf( 0, "[Error @ yfs.c @ rmDir]: directoryInodeNum is Error: pathname: %s, filename: %s\n", pathname, fileName );
-		return ERROR;
-	}
-
-	//just remove lastExisting dir
-	struct inode * temp;
-	if( fileNameCount == 0 )
-	{
-		temp = readInode( lastExistingDir ); //TODO: free this
-
-	}
-	else
-	{
-		int dir = readDirectory( lastExistingDir, fileName, fileNameCount );
-		if( dir == ERROR)
-		{
-			TracePrintf( 0, "[Error @ yfs.c @ rmDir]: non existing dir requested : (%s)\n", pathname );
-			return ERROR;
-		}
-		temp = readInode( dir );
-		if( temp->type != INODE_DIRECTORY )
-		{
-			TracePrintf( 0, "[Error @ yfs.c @ rmDir]: try to remove non directory: (%s)\n", pathname );
-			return ERROR;
-		}
-
-	}
-	temp->type = INODE_FREE;
-	if( temp->indirect != 0 )
-	{
-		//TODO: free all the indirect inodes
-	}
-	int i;
-	for( i = 0; i < NUM_DIRECT; i++ )
-	{
-		if( temp->direct[i] == 0 )
-		{
-			break;
-		}
-		//TODO: mark direct[i] block free
-		temp->direct[i] = 0;
-	}
-	writeInode( lastExistingDir, temp );
-//TODO: mark temp as a free in the free list
-	free( fileName );
-	return 0;
-
 }*/
 
 int rmDir(char *pathname, int pathnamelen){
@@ -1102,6 +1048,9 @@ int rmDir(char *pathname, int pathnamelen){
 		  TracePrintf( 0, "[Error @ yfs.c @ rmDir]: failed to open directory (%s)\n", pathname);
 		  return ERROR;
 	}
+
+
+	//TODO:Need Also to remove it in the parent directory
 	struct inode * dir = readInode(openDir);
 	//If the pathname is a symlink, simply delete the symlink
 	if(dir->type == INODE_SYMLINK){
@@ -1149,6 +1098,8 @@ int rmDir(char *pathname, int pathnamelen){
 				addToFreeBlockList(blockIndex);
 		}
 		free(buf);
+		dir->indirect = 0;
+		addToFreeBlockList(blockNum);
 	}
 	
 	//Now that we have freed all the block used
@@ -1187,6 +1138,7 @@ int link(int curDir, char *oldname, int oldnamelen, char* newname, int newnamele
 	if(oldInodeNum == ERROR){
 		TracePrintf(0, "[Error @ yfs.c @ link]: Cannot find oldpathname:(%s)\n", oldname);
 		free(fileName);
+		//symLink(oldname, oldnamelen, newname, newnamelen);
 		return ERROR;
 	}
 
@@ -1272,36 +1224,68 @@ int unlink( char * pathname, int pathnamelen, struct Message * msg )
 	}
 	else
 	{
+		struct inode *inode = readInode( lastExistingDir );
+		TracePrintf( 300, "[Testing @ yfs.c @ unlink]: we want to find file(%s), length(%d)\n", fileName, fileNameCount);
+		TracePrintf( 350, "[Testing @ yfs.c @ unlink]: %d: inode(type: %d, nlink: %d, size: %d, direct: %d, indirect: %d)\n", lastExistingDir,
+		inode->type, inode->nlink, inode->size, inode->direct[0], inode->indirect );
+		int *usedBlocks = malloc( sizeof(int) );		//remember to free this thing somewhere later
 
-		int linkFile = readDirectory( lastExistingDir, fileName, fileNameCount );
-		if( linkFile == ERROR)
+		//need to check if get used blocks successfully, the inode may be a free inode
+		int usedBlocksCount = getUsedBlocks( inode, &usedBlocks );
+		TracePrintf( 300, "[Testing @ yfs.c @ readDirectory]: usedBlockCount: %d\n", usedBlocksCount );
+		int numDirEntries = (inode->size) / sizeof(struct dir_entry);
+		int directoryCount = 0;
+		int index = 0;
+		int i;
+		for( i = 0; i < usedBlocksCount; i++ )
 		{
-			//not found
-			TracePrintf( 0, "[Erro @ yfs.c @ unlink]: cannot find file (%s), full path(%s)\n", fileName, pathname );
-			free( fileName );
-			return ERROR;
-		}
-		else
-		{
-
-			struct inode* inode = readInode( linkFile );
-			if( inode->type == SYMLINK )
+			TracePrintf( 300, "[Testing @ yfs.c @ readDirectory]: usedBlock[%d]: %d\n", i, usedBlocks[i] );
+			char *buf = readBlock( usedBlocks[i] );
+			while( index < BLOCKSIZE / sizeof(struct dir_entry) && directoryCount < numDirEntries )
 			{
-				//not traversed
-				//just unlink the symlink
-			}
-			else
-			{
+				struct dir_entry *dirEntry = (struct dir_entry *) buf + index;
+				TracePrintf( 300, "[Testing @ yfs.c @ readDirectory]: block (%d), index(%d), directory[%d]: inum(%d), name(%s)\n", i, index,
+					directoryCount, dirEntry->inum, dirEntry->name );
 
-				//hard link 
-				//traversed
+			//compare the dir_entry's name and fileName
+				int compare = strncmp( dirEntry->name, fileName, DIRNAMELEN );
+				if( compare == 0 )
+				{
+					//found the entry
+				struct inode *oldnode = readInode( dirEntry->inum);
+				oldnode->nlink --;
+				if(oldnode->nlink == 0){
+					  //free this node
+
+				}
+				writeInode(dirEntry->inum, oldnode);
+				free(oldnode);
+				dirEntry->inum = 0;
+				
+				writeBlock(usedBlocks[i], buf);
+				free(buf);
+				free(inode);
+				free(fileName);
+				free(usedBlocks);
+				return 0;
+						
+				}
+
+				index++;
+				directoryCount++;
 			}
 
-			//Remove the directory entry 
-			free(inode);
+			free(buf);
+			
+			
 		}
+
+		free(usedBlocks);
+		free(inode);
 	}
-	return 0;
+	free(fileName);
+	return ERROR;
+	
 
 }
 
