@@ -204,7 +204,10 @@ extern int Read( int fd, void *buf, int size )
 		TracePrintf( 0, "[Error @ iolib.h @ Read]: The send status is Error.\n" );
 		return ERROR;
 	}
-	return 0;
+
+	TracePrintf(200, "[Testing @ iolib.c @ Read]: bytes write: %d, newPos: %d, buf: %s\n", msg.size,msg.len, buf);
+	openFileTable[fd].currentPos = msg.len;
+	return msg.size;
 }
 
 extern int Write( int fd, void *buf, int size )
@@ -229,7 +232,11 @@ extern int Write( int fd, void *buf, int size )
 		TracePrintf( 0, "[Error @ iolib.c @ Write]: The send status is Error.\n" );
 		return ERROR;
 	}
-	return 0;
+
+	TracePrintf(200, "[Testing @ iolib.c @ Write]: bytes write: %d, newPos: %d\n", msg.size,msg.len);
+
+	openFileTable[fd].currentPos = msg.len;
+	return msg.size;
 }
 
 extern int Seek( int fd, int offset, int whence )
@@ -597,8 +604,7 @@ extern int Stat( char *pathname, struct Stat *statbuf )
 	msg.messageType = STAT;
 	msg.pathname = pathname;
 	msg.len = strlen( pathname );
-
-	msg.size = sizeof(statbuf); //unfinished
+	msg.buf = statbuf;
 
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
@@ -606,6 +612,14 @@ extern int Stat( char *pathname, struct Stat *statbuf )
 		TracePrintf( 0, "[Error @ iolib.h @ Stat]: The send status is Error.\n" );
 		return ERROR;
 	}
+
+	if((msg.size) == ERROR)
+	{
+		TracePrintf( 0, "[Error @ iolib.h @ Stat]: The return status is Error.\n" );
+	}
+
+	TracePrintf(150, "[Testing @ iolib.c @ Stat]: Struct Stat: inum(%d), type(%d), size(%d), nlink(%d)\n", statbuf -> inum, statbuf -> type, statbuf -> size, statbuf -> nlink);
+
 	return 0;
 }
 
