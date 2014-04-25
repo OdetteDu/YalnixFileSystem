@@ -1134,6 +1134,75 @@ int rmDir( char* pathname, int pathNameLen )
 int readFile( int inodeNum, int currentPos, char *buf, int bufSize )
 {
 	TracePrintf( 200, "[Testing @ yfs.c @ readFile]: Begin: inodeNum: %d, currentPos: %d, bufSize: %d, buf: %s\n", inodeNum, currentPos, bufSize, buf );
+	int posInBuf = 0;
+	int posInFile = currentPos;
+
+	struct inode *inode = readInode(inodeNum);
+	if(inode == NULL)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ readFile]: the inode %d is NULL\n", inodeNum);
+	}
+
+	if(inode -> type == INODE_FREE)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ readFile]: the inode %d type is INODE_FREE\n", inodeNum);
+	}
+
+	int currentFileSize = inode -> size;
+//	int currentNumBlockUsed = calculateNumBlocksUsed(currentFileSize);
+
+	int *usedBlocks = malloc( sizeof(int) );		//TODO:remember to free this thing somewhere later
+	int usedBlocksCount = getUsedBlocks( inode, &usedBlocks );
+	TracePrintf( 200, "[Testing @ yfs.c @ readFile]: usedBlockCount: %d\n", usedBlocksCount );
+	
+	int blockIndex = calculateNumBlocksUsed(currentPos);
+	if(currentPos % BLOCKSIZE != 0)
+	{
+		//1. read the current block until the block is full
+		int numBytesTobeReadInCurrentBlock = BLOCKSIZE - (currentPos % BLOCKSIZE);	
+		if(numBytesTobeReadInCurrentBlock > bufSize)
+		{
+			numBytesTobeReadInCurrentBlock = bufSize;
+		}
+		int currentBlockNum = usedBlocks[blockIndex - 1];
+
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: Before read the current block: %d, posInBuf: %d\n", currentBlockNum, posInBuf);
+		char *currentBlockData = readBlock(currentBlockNum);
+		memcpy(buf, currentBlockData + (currentPos % BLOCKSIZE), numBytesTobeReadInCurrentBlock);
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: Current Block %d After reading %d bytes: %s, buf: %s\n", currentBlockNum, numBytesTobeReadInCurrentBlock, currentBlockData, buf );
+		free(currentBlockData);
+
+		posInBuf += numBytesTobeReadInCurrentBlock;
+		posInFile += numBytesTobeReadInCurrentBlock;
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: After read the current block: %d, posInBuf: %d, posInFile: %d\n", currentBlockNum, posInBuf, posInFile);
+	}
+
+	//2. read the rest of the blocks  
+	while(posInBuf < bufSize && posInFile < currentFileSize)
+	{
+		int numBytesCanBeRead = currentFileSize - posInFile;
+		int numBytesTobeRead = bufSize - posInBuf; 
+
+		if(numBytesTobeRead > numBytesCanBeRead)
+		{
+			numBytesTobeRead = numBytesCanBeRead;
+		}
+
+		if(numBytesTobeRead > BLOCKSIZE)
+		{
+			numBytesTobeRead = BLOCKSIZE;
+		}
+
+		char *newData = readBlock(usedBlocks[blockIndex]);
+		memcpy( buf+posInBuf, newData, numBytesTobeRead);
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: Current Block %d:%d After reading %d bytes: %s, buf: %s\n", blockIndex, usedBlocks[blockIndex], numBytesTobeRead, newData, buf );
+		free(newData);
+		posInBuf += numBytesTobeRead;
+		posInFile += numBytesTobeRead;
+		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: After read the current block: %d:%d, posInBuf: %d, posInFile: %d\n", blockIndex, usedBlocks[blockIndex], posInBuf, posInFile);
+		blockIndex ++;
+	}
+	
 	return 0;
 }
 
