@@ -429,8 +429,7 @@ extern int Stat( char *pathname, struct Stat *statbuf )
 	msg.messageType = STAT;
 	msg.pathname = pathname;
 	msg.len = strlen( pathname );
-
-	msg.size = sizeof(statbuf); //unfinished
+	msg.buf = statbuf;
 
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
@@ -438,6 +437,14 @@ extern int Stat( char *pathname, struct Stat *statbuf )
 		TracePrintf( 0, "[Error @ iolib.h @ Stat]: The send status is Error.\n" );
 		return ERROR;
 	}
+
+	if((msg.size) == ERROR)
+	{
+		TracePrintf( 0, "[Error @ iolib.h @ Stat]: The return status is Error.\n" );
+	}
+
+	TracePrintf(150, "[Testing @ iolib.c @ Stat]: Struct Stat: inum(%d), type(%d), size(%d), nlink(%d)\n", statbuf -> inum, statbuf -> type, statbuf -> size, statbuf -> nlink);
+
 	return 0;
 }
 

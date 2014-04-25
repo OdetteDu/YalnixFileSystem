@@ -1460,11 +1460,30 @@ int seek(int inodeNum)
 	return inode -> size;
 }
 
-int stat( struct Message *msg )
+struct Stat *getFileStat( char *pathname, int pathNameLen )
 {
-	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
-	return 0;
+	int inodeNum = openFileOrDir(pathname, pathNameLen);
 
+	struct inode *inode = readInode(inodeNum);
+	if(inode == NULL)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ stat]: the inode %d is NULL\n", inodeNum);
+	}
+
+	if(inode -> type == INODE_FREE)
+	{
+		TracePrintf(0, "[Error @ yfs.c @ stat]: the inode %d type is INODE_FREE\n", inodeNum);
+	}
+
+	struct Stat *stat = malloc(sizeof(struct Stat));
+	stat -> inum = inodeNum;
+	stat -> type = inode -> type;
+	stat -> size = inode -> size;
+	stat -> nlink = inode -> nlink;
+
+	TracePrintf(150, "[Testing @ yfs.c @ Stat]: Finished: pathname: %s, pathNameLen: %d, Stat: inum(%d), type(%d), size(%d), nlink(%d)\n", pathname, pathNameLen, stat -> inum, stat -> type, stat -> size, stat -> nlink);
+
+	return stat;
 }
 
 int sync()
@@ -1555,8 +1574,18 @@ void addressMessage( int pid, struct Message *msg )
 			msg->size = chDir( pathname, len );
 			break;
 		case STAT:
-			//TODO: STAT
-			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message STAT: type(%d), len(%d), pathname(%s)\n", type, len, pathname );
+			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message STAT: type(%d), len(%d), pathname(%s), statbuf(%d)\n", type, len, pathname, msg->buf );
+			struct Stat *stat = getFileStat(pathname, len);
+			if(stat == NULL)
+			{
+				msg -> size = ERROR;
+			}
+
+			if( CopyTo( pid, msg->buf, stat, sizeof(struct Stat) ) == ERROR )
+			{
+				TracePrintf( 0, "[Error @ yfs.c @ addressMessage]: copy stat to pid %d failure, size: %d, stat: %d, msg->buf: %d\n", pid, size, stat, msg->buf );
+			}
+			free(stat);
 			break;
 		case READLINK:
 			//TODO: READLINK
