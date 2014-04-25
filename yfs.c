@@ -7,27 +7,41 @@
 #include "global.h"
 
 /* Global Variables */
-//<<<<<<< HEAD
-//struct Message *msg;
-//char *pathname;
-//=======
 int numInodes;
 int numBlocks;
 
-//struct Message *msg;
-//char *pathname;
-//>>>>>>> 8d72dc280fc188e2ed750782319967ce13c6c894
-//char fileName[DIRNAMELEN];
-//int fileNameCount;
-
-//the working directory inode number is the ROOTINODE at the 
-// beginning of things....
-//int workingDirectoryInodeNumber = ROOTINODE;
-/* Initialize the linkedIntList */
 LinkedIntList* isInodeFreeHead = NULL;
 LinkedIntList* isBlockFreeHead = NULL;
 LinkedIntList* isInodeFreeTail = NULL; //= malloc( sizeof(LinkedIntList));
 LinkedIntList* isBlockFreeTail = NULL; // = malloc( sizeof(LinkedIntList));
+
+struct CacheBlockNode
+{
+	int blockNum;
+	int isDirty;
+	char data[BLOCKSIZE];
+	struct CacheBlockNode *HashPrev;
+	struct CacheBlockNode *HashNext;
+	struct CacheBlockNode *LRUPrev;
+	struct CacheBlockNode *LRUNext;
+};
+
+int numCachedBlock = 0;
+struct CacheBlockNode *blockCacheTable[BLOCK_CACHESIZE];
+struct CacheBlockNode *blockLRUHead = NULL;
+struct CacheBlockNode *blockLRUTail = NULL;
+
+char* readBlockFromCache(int blockNum)
+{
+	TracePrintf(100, "[Testing @ yfs.c @ readBlockFromCache]: Start: blockNum(%d)\n", blockNum);  
+
+}
+
+int writeBlockToCache(int blockNum, char *data)
+{
+	TracePrintf(100, "[Testing @ yfs.c @ writeBlockFromCache]: Start: blockNum(%d), data(%s)\n", blockNum, data);  
+	return 0;
+}
 
 /* Function declarations */
 //for general linked list
@@ -482,21 +496,22 @@ int getInodeIndexWithinBlock( int inodeNum )
 /* Read and write for block */
 char* readBlock( int blockNum )
 {
+	TracePrintf(100, "[Testing @ yfs.c @ readBlock]: Start: blockNum(%d)\n", blockNum);  
 	char *buf;
 	buf = malloc( sizeof(char) * SECTORSIZE );
 	int readBlockStatus = ReadSector( blockNum, buf );
 	if( readBlockStatus != 0 )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ readBlock]: Read block %d unsuccessfully\n", blockNum );
-		return ERROR;
+		return NULL;
 	}
 	//TODO: free buf at any call to readBlock after use
 	return buf;
 }
 
 int writeBlock( int blockNum, char *buf )
-	
 {
+	TracePrintf(100, "[Testing @ yfs.c @ writeBlock]: Start: blockNum(%d), buf(%s)\n", blockNum, buf);  
 	int writeBlockStatus = WriteSector( blockNum, buf );
 	if( writeBlockStatus != 0 )
 	{
@@ -1748,15 +1763,10 @@ int main( int argc, char **argv )
 	{
 		TracePrintf( 0, "[Error @ yfs.main]: unsuccessfully register the YFS as the FILE_SERVER.\n" );
 	}
-	//set the current workingDirectoryInodeNumber to be ROOTINODE
-//	workingDirectoryInodeNumber = ROOTINODE;
+	
 	printDisk( 1500, "main.c" );
 	calculateFreeBlocksAndInodes();
 
-	//set all char in fileName \0, 
-	//TODO: check understanding
-//	memset(fileName, '\0', DIRNAMELEN);
-//	struct Message *msg;
 	int pid = Fork();
 	if( pid == 0 )
 	{
@@ -1764,8 +1774,6 @@ int main( int argc, char **argv )
 	}
 	else
 	{
-//		msg = malloc( sizeof(struct Message) );
-//		pathname = malloc( sizeof(char) * MAXPATHNAMELEN );
 		while( 1 )
 		{
 			struct Message *msg = malloc(sizeof(struct Message));
@@ -1778,11 +1786,17 @@ int main( int argc, char **argv )
 			}
 
 			TracePrintf( 500, "Sender: %d\n", sender );
-			addressMessage( sender, msg );
-			Reply( msg, sender );
+
+			char *buf1 = readBlockFromCache(1);
+			char *buf2 = malloc(sizeof(char) * BLOCKSIZE);
+			writeBlockToCache(1, buf2);
+			free(buf2);
+//			addressMessage( sender, msg );
+//			Reply( msg, sender );
 			free(msg);
 		}
 	}
+
 
 	return 0;
 }
