@@ -9,11 +9,13 @@ int main(int argc, char **argv)
 	printf("Hello, World!\n");
 //	int fd =Create("/odette");
 	MkDir("Test");
-	MkDir("/Test///////////////test2");
-	int fd2 = Open("Test/test2");
+	//MkDir("/Test///////////////test2");
+	ChDir("Test");
+	MkDir("test2");
+	int fd2 = Open("test2");
 //	Close(fd);
 	Close(fd2);
-	ChDir("Test");
+//	ChDir("Test");
 
 	TracePrintf(500, "return from open\n");
 //	return 0;

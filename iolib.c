@@ -58,6 +58,7 @@ int getPathnameLength( char *buf )
 	while( ( *name) != '\0' )
 	{
 		length++;
+		TracePrintf(0, "Namelength: %c\n", *name);
 		if( length >= MAXPATHNAMELEN )
 		{
 
@@ -372,16 +373,37 @@ extern int ReadLink( char *pathname, char *buf, int size )
 extern int MkDir( char *pathname )
 {
 	struct Message msg;
-	msg.messageType = MKDIR;
-	msg.pathname = pathname;
-	msg.len = strlen( pathname );
 
-	int send = Send( (void *) &msg, FILE_SERVER );
+	int length;
+	char* pathCopy;
+
+	TracePrintf(0, "[Testing @ iolib.c @ MkDir]: Entering create: %s\n", pathname);
+	length = getPathnameLength( pathname );
+	if((length)==ERROR){
+		TracePrintf(0, "[Error @ iolib.c @ MkDir]: pathname length too long\n");	  
+		return ERROR;
+	}
+
+	if((pathCopy = malloc((length+1)*sizeof(char)))==NULL){
+		TracePrintf(0, "[Error @ iolib.c @ MkDir]: Failed to malloc for pathname copy\n");  
+		return ERROR;
+	}
+
+	memcpy(pathCopy, pathname, length+1);
+
+	msg.messageType = MKDIR;
+	msg.pathname = pathCopy;
+	msg.len = length+1;
+
+	int send = Send((void *)&msg, FILE_SERVER );
 	if( send != 0 )
 	{
 		TracePrintf( 0, "[Error @ iolib.h @ MkDir]: The send status is Error.\n" );
 		return ERROR;
 	}
+	//TODO: check return status
+
+	free(pathCopy);
 	return 0;
 }
 
