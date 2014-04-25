@@ -17,7 +17,7 @@ struct OpenFileEntry
 };
 
 struct OpenFileEntry openFileTable[MAX_OPEN_FILES];
-
+int workingDir = ROOTINODE;
 /* Function declarations */
 int isFileDescriptorLegal( int fd );
 int getFreeFD( void );
@@ -113,7 +113,7 @@ extern int Open( char *pathname )
 	msg.messageType = OPEN;
 	msg.pathname = pathCopy;
 	msg.len = length + 1;	//strlen(pathname);
-
+	msg.inode = workingDir;
 	TracePrintf( 500, "before blocked from send\n" );
 	int send = Send( &msg, FILE_SERVER );
 	if( send == ERROR )
@@ -168,6 +168,7 @@ extern int Create( char *pathname )
 	msg.pathname = pathCopy;
 	msg.len = length + 1;
 
+	msg.inode = workingDir;
 	TracePrintf(0, "[Testing @ iolib.c @ Create]: copy pathName: ptr(%p), pathnamecopy(%s)\n", pathCopy, pathCopy);
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send == ERROR )
@@ -334,6 +335,7 @@ extern int Link( char *oldname, char *newname )
 	msg.buf = newCopy;
 	msg.size = newlen +1;
 
+	msg.inode = workingDir;
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
 	{
@@ -350,17 +352,46 @@ extern int Link( char *oldname, char *newname )
 extern int Unlink( char *pathname )
 {
 	struct Message msg;
-	msg.messageType = UNLINK;
-	msg.pathname = pathname;
-	msg.len = strlen( pathname );
+	int length;
+	char* pathCopy;
 
+	TracePrintf(0, "[Testing @ iolib.c @ Unlink]: Entring unlkin: pathname(%s)\n", pathname);
+
+
+	//check /
+	// check .
+	// chekc ..
+	//
+
+	//get the length of pathname
+	if( (length = getPathnameLength( pathname )) == ERROR){
+		  return ERROR;
+	}
+	
+	//malloc and copy
+	if( (pathCopy = malloc( (length+1) * sizeof(char))) == NULL){
+		  TracePrintf(0, "[Error @ iolib.c @ unlink]: cannot malloc for pathcopy\n");
+		  return ERROR;
+	}
+	memcpy(pathCopy, pathname, length+1);
+
+
+	msg.messageType = UNLINK;
+	msg.pathname = pathCopy;
+	msg.len = length+1;
+
+	msg.inode = workingDir;
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
 	{
-		TracePrintf( 0, "[Error @ iolib.h @ Unlink]: The send status is Error.\n" );
+		TracePrintf( 0, "[Error @ iolib.h @ unlink]: The send status is Error.\n" );
 		return ERROR;
 	}
+
+	//TODO: checkReturn status
+	free(pathCopy);
 	return 0;
+	
 }
 
 extern int SymLink( char *oldname, char *newname )
@@ -399,6 +430,7 @@ extern int SymLink( char *oldname, char *newname )
 	msg.buf = newCopy;
 	msg.size = newlen +1;
 
+	msg.inode = workingDir;
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
 	{
@@ -457,6 +489,7 @@ extern int MkDir( char *pathname )
 	msg.pathname = pathCopy;
 	msg.len = length+1;
 
+	msg.inode = workingDir;
 	int send = Send((void *)&msg, FILE_SERVER );
 	if( send != 0 )
 	{
@@ -500,6 +533,7 @@ extern int ChDir( char *pathname )
 	msg.pathname = pathCopy;
 	msg.len = length+1;
 
+	msg.inode = workingDir;
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
 	{
@@ -540,10 +574,11 @@ extern int RmDir( char *pathname )
 	memcpy(pathCopy, pathname, length+1);
 
 
-	msg.messageType = CHDIR;
+	msg.messageType = RMDIR;
 	msg.pathname = pathCopy;
 	msg.len = length+1;
 
+	msg.inode = workingDir;
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
 	{
