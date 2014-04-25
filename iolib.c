@@ -442,9 +442,27 @@ extern int MkDir( char *pathname )
 extern int ChDir( char *pathname )
 {
 	struct Message msg;
+	int length;
+	char* pathCopy;
+
+	TracePrintf(0, "[Testing @ iolib.c @ ChDir]: Entring ChDir: pathname(%s)\n", pathname);
+
+	//get the length of pathname
+	if( (length = getPathnameLength( pathname )) == ERROR){
+		  return ERROR;
+	}
+	
+	//malloc and copy
+	if( (pathCopy = malloc( (length+1) * sizeof(char))) == NULL){
+		  TracePrintf(0, "[Error @ iolib.c @ ChDir]: cannot malloc for pathcopy\n");
+		  return ERROR;
+	}
+	memcpy(pathCopy, pathname, length+1);
+
+
 	msg.messageType = CHDIR;
-	msg.pathname = pathname;
-	msg.len = strlen( pathname );
+	msg.pathname = pathCopy;
+	msg.len = length+1;
 
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
@@ -452,6 +470,9 @@ extern int ChDir( char *pathname )
 		TracePrintf( 0, "[Error @ iolib.h @ ChDir]: The send status is Error.\n" );
 		return ERROR;
 	}
+
+	//TODO: checkReturn status
+	free(pathCopy);
 	return 0;
 }
 

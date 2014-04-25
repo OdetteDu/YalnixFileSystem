@@ -916,7 +916,7 @@ int mkDir( char * pathname, int pathNameLen )
 
 	TracePrintf( 0, "[Testing @ yfs.c @ mkDir] Entering Mkdir, requesting %s\n", pathname );
 	char *fileName = malloc( sizeof(char) * DIRNAMELEN );
-	//memset( fileName, '\0', DIRNAMELEN );
+	memset( fileName, '\0', DIRNAMELEN );
 	int fileNameCount=0;
 
 	int lastExistingDir;
@@ -943,7 +943,7 @@ int mkDir( char * pathname, int pathNameLen )
 	}
 	else
 	{
-		TracePrintf( 0, "[Testing @ yfs.c @ mkDir]: try to make directory full path: %s, actual path needs to be created: %s\n", pathname, fileName );
+		TracePrintf( 0, "[Testing @ yfs.c @ mkDir]: 946try to make directory full path: %s, actual path needs to be created: %s\n", pathname, fileName );
 		//create a new directory with name 
 
 		int fileInodeNum = readDirectory( lastExistingDir, fileName, fileNameCount );
@@ -991,9 +991,7 @@ int mkDir( char * pathname, int pathNameLen )
 			TracePrintf( 0, "[Testing @ yfs.c @ mkDir]: added .. to the dir we create at %s \n", fileName );
 			writeNewEntryToDirectory( newInodeNum, newDirEntry );
 			free( newDirEntry );
-			free(fileName);
 			free(inode);
-			return 0;
 		}
 		else
 		{
@@ -1005,7 +1003,7 @@ int mkDir( char * pathname, int pathNameLen )
 
 	fileNameCount = 0;
 	free(fileName);//memset(fileName, '\0', DIRNAMELEN);
-	return ERROR;
+	return 0;
 
 }
 
