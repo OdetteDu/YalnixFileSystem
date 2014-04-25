@@ -1579,6 +1579,10 @@ void addressMessage( int pid, struct Message *msg )
 					currentPos, size, buf );
 			msg -> size = readFile(inode, &currentPos, buf, size);
 			msg -> len = currentPos;
+			if( CopyTo( pid, msg->buf, buf, size ) == ERROR )
+			{
+				TracePrintf( 0, "[Error @ yfs.c @ addressMessage]: copy buf to pid %d failure, size: %d, buf: %d, msg->buf: %d\n", pid, size, buf, msg->buf );
+			}
 			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Reply READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
 					currentPos, size, buf );
 			break;

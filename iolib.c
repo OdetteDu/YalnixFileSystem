@@ -202,7 +202,7 @@ extern int Read( int fd, void *buf, int size )
 		return ERROR;
 	}
 
-	TracePrintf(200, "[Testing @ iolib.c @ Read]: bytes write: %d, newPos: %d\n", msg.size,msg.len);
+	TracePrintf(200, "[Testing @ iolib.c @ Read]: bytes write: %d, newPos: %d, buf: %s\n", msg.size,msg.len, buf);
 	openFileTable[fd].currentPos = msg.len;
 	return msg.size;
 }
