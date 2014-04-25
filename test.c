@@ -10,7 +10,8 @@ int main(int argc, char **argv)
 	int fd = Create("/odette");
 	TracePrintf(500, "return from open\n");
 	Write(fd, "Hello, World!", 14); 
-//	Seek(fd, 0, SEEK_SET);
+	Seek(fd, 7, SEEK_SET);
+	Write(fd, "Kitty", 6);
 	TracePrintf(500, "return from seek\n");
 	
 	Exit(0);
