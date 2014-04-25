@@ -9,21 +9,21 @@ int main(int argc, char **argv)
 	printf("Hello, World!\n");
 	MkDir("Test");
 	MkDir("VerLongTest");
-	//MkDir("DDDDDDDDD");
+	MkDir("DDDDDDDDD");
 	//Open("Test");
 	Link("Test", "FLYTOSkyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
 	Link("VerLongTest", "FUCKYOU");
-	//Unlink("FUCKYOU");
-//	MkDir("Sweet");
-//	Unlink("FLYTOSkyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
+	Unlink("FUCKYOU");
+	MkDir("Sweet");
+	Unlink("FLYTOSkyyyyyyyyyyyyyyyyyyyyyyyyyyyyy");
 	
 //	Open("DDDDDDDDD");
 //	ChDir("Test");
 //	MkDir("FUCKLIFE");
 //	ChDir("FUCKLIFE");
 //	ChDir("..");
-//	RmDir("VerLongTest");
-//	RmDir("Sweet");
+	RmDir("VerLongTest");
+	RmDir("Sweet");
 	
 	Exit(0);
 		  
