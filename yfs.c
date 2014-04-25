@@ -1141,11 +1141,13 @@ int readFile( int inodeNum, int *currentPos, char *buf, int bufSize )
 	if(inode == NULL)
 	{
 		TracePrintf(0, "[Error @ yfs.c @ readFile]: the inode %d is NULL\n", inodeNum);
+		return ERROR;
 	}
 
 	if(inode -> type == INODE_FREE)
 	{
 		TracePrintf(0, "[Error @ yfs.c @ readFile]: the inode %d type is INODE_FREE\n", inodeNum);
+		return ERROR;
 	}
 
 	int currentFileSize = inode -> size;
@@ -1202,8 +1204,9 @@ int readFile( int inodeNum, int *currentPos, char *buf, int bufSize )
 		TracePrintf( 200, "[Testing @ yfs.c @ readFile]: After read the current block: %d:%d, posInBuf: %d, posInFile: %d\n", blockIndex, usedBlocks[blockIndex], posInBuf, posInFile);
 		blockIndex ++;
 	}
-	
-	return 0;
+
+	*currentPos = posInFile;
+	return posInBuf;
 }
 
 int writeFile( int inodeNum, int *currentPos, char *buf, int bufSize )
@@ -1211,7 +1214,7 @@ int writeFile( int inodeNum, int *currentPos, char *buf, int bufSize )
 	TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: Begin: inodeNum: %d, currentPos: %d, bufSize: %d, buf: %s\n", inodeNum, currentPos, bufSize, buf );
 
 	int posInBuf = 0;
-//	int posInFile = currentPos;
+	int posInFile = *currentPos;
 
 	struct inode *inode = readInode(inodeNum);
 	if(inode == NULL)
@@ -1303,8 +1306,8 @@ int writeFile( int inodeNum, int *currentPos, char *buf, int bufSize )
 		free(currentBlockData);
 
 		posInBuf += numBytesTobeWriteInCurrentBlock;
-//		posInFile += numBytesTobeWriteInCurrentBlock;
-		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: After write the current block: %d, posInBuf: %d\n", currentBlockNum, posInBuf);
+		posInFile += numBytesTobeWriteInCurrentBlock;
+		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: After write the current block: %d, posInBuf: %d, posInFile:%d\n", currentBlockNum, posInBuf, posInFile);
 	}
 
 	//2. write the rest of the blocks  
@@ -1322,12 +1325,13 @@ int writeFile( int inodeNum, int *currentPos, char *buf, int bufSize )
 		writeBlock(usedBlocks[blockIndex], newData);
 		free(newData);
 		posInBuf += numBytesTobeWrite;
-//		posInFile += numBytesTobeWrite;
-		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: After write the current block: %d:%d, posInBuf: %d\n", blockIndex, usedBlocks[blockIndex], posInBuf);
+		posInFile += numBytesTobeWrite;
+		TracePrintf( 200, "[Testing @ yfs.c @ writeFile]: After write the current block: %d:%d, posInBuf: %d, posInFile:%d\n", blockIndex, usedBlocks[blockIndex], posInBuf, posInFile);
 		blockIndex ++;
 	}
 	
-	return 0;
+	*currentPos = posInFile;
+	return posInBuf;
 }
 
 int link( struct Message * msg )
@@ -1571,15 +1575,21 @@ void addressMessage( int pid, struct Message *msg )
 			break;
 		case READ:
 			//TODO: READ
-			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
+			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Message READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
 					currentPos, size, buf );
-			readFile(inode, &currentPos, buf, size);
+			msg -> size = readFile(inode, &currentPos, buf, size);
+			msg -> len = currentPos;
+			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Reply READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
+					currentPos, size, buf );
 			break;
 		case WRITE:
 			//TODO: WRITE
-			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
+			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Message WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
 					currentPos, size, buf );
-			writeFile(inode, &currentPos, buf, size);
+			msg -> size = writeFile(inode, &currentPos, buf, size);
+			msg -> len = currentPos;
+			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Reply WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode,
+					currentPos, size, buf );
 			break;
 		case SEEK:
 			//TODO: SEEK

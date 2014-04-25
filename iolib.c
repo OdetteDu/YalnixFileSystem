@@ -201,7 +201,10 @@ extern int Read( int fd, void *buf, int size )
 		TracePrintf( 0, "[Error @ iolib.h @ Read]: The send status is Error.\n" );
 		return ERROR;
 	}
-	return 0;
+
+	TracePrintf(200, "[Testing @ iolib.c @ Read]: bytes write: %d, newPos: %d\n", msg.size,msg.len);
+	openFileTable[fd].currentPos = msg.len;
+	return msg.size;
 }
 
 extern int Write( int fd, void *buf, int size )
@@ -226,7 +229,11 @@ extern int Write( int fd, void *buf, int size )
 		TracePrintf( 0, "[Error @ iolib.c @ Write]: The send status is Error.\n" );
 		return ERROR;
 	}
-	return 0;
+
+	TracePrintf(200, "[Testing @ iolib.c @ Write]: bytes write: %d, newPos: %d\n", msg.size,msg.len);
+
+	openFileTable[fd].currentPos = msg.len;
+	return msg.size;
 }
 
 extern int Seek( int fd, int offset, int whence )
