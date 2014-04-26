@@ -49,7 +49,7 @@ struct CacheINode
 {
 	int inodeNum;
 	int isDirty;
-	struct inode *data;
+	struct inode data;
 	struct CacheINode *HashPrev;
 	struct CacheINode *HashNext;
 	struct CacheINode *LRUPrev;
@@ -922,7 +922,7 @@ struct CacheINode *getInodeFromCache( int inodeNum )
 			if( (tobeRemove->isDirty) == 1 )
 			{
 				struct inode *data = malloc( sizeof(struct inode) );
-				memcpy( data, tobeRemove->data, sizeof(struct inode) );
+				memcpy( data, &(tobeRemove->data), sizeof(struct inode) );
 				writeInodeToDisk( tobeRemove->inodeNum, data );
 			}
 			free( tobeRemove );
@@ -1037,7 +1037,7 @@ struct inode* readInode( int inodeNum )
 
 	struct CacheINode *cacheNode = getInodeFromCache( inodeNum );
 	struct inode *data = malloc( sizeof(struct inode) );
-	memcpy( data, cacheNode->data, sizeof(struct inode) );
+	memcpy( data, &(cacheNode->data), sizeof(struct inode) );
 	TracePrintf( 100, "[Testing @ yfs.c @ readInodeFromCache]: Finish: inodeNum(%d), data(%s)\n", inodeNum, data );
 	return data;
 }
@@ -1046,7 +1046,7 @@ int writeInode( int inodeNum, struct inode *data )
 {
 	TracePrintf( 100, "[Testing @ yfs.c @ writeInodeFromCache]: Start: inodeNum(%d), data(%s)\n", inodeNum, data );
 	struct CacheINode *cacheNode = getInodeFromCache( inodeNum );
-	memcpy( cacheNode->data, data, sizeof(struct inode) );
+	memcpy( &(cacheNode->data), data, sizeof(struct inode) );
 	cacheNode->isDirty = 1;
 	return 0;
 }
