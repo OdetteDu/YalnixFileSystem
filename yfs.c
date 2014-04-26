@@ -30,8 +30,8 @@ int numCachedBlock = 0;
 struct CacheBlockNode *blockCacheTable[BLOCK_CACHESIZE];
 struct CacheBlockNode *blockLRUHead = NULL;
 
-char* readBlock( int );
-int writeBlock( int, char *);
+char* readBlockToDisk( int );
+int writeBlockToDisk( int, char *);
 
 void printLRUBlockCache()
 {
@@ -140,13 +140,13 @@ struct CacheBlockNode *getBlockFromCache( int blockNum )
 			{
 				char *data = malloc(sizeof(char) * BLOCKSIZE);
 				memcpy(data, tobeRemove -> data, BLOCKSIZE);
-				writeBlock(tobeRemove -> blockNum, data);
+				writeBlockToDisk(tobeRemove -> blockNum, data);
 			}
 			free(tobeRemove);
 		}
 
 		//Load the data inoto cache
-		char *data = readBlock( blockNum );
+		char *data = readBlockToDisk( blockNum );
 		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Get Data: blockNum(%d), data(%s)\n", blockNum, data );
 		cacheNode = malloc( sizeof(struct CacheBlockNode) );
 		cacheNode->blockNum = blockNum;
@@ -248,7 +248,7 @@ struct CacheBlockNode *getBlockFromCache( int blockNum )
 	return cacheNode;
 }
 
-char* readBlockFromCache( int blockNum )
+char* readBlock( int blockNum )
 {
 	TracePrintf( 100, "[Testing @ yfs.c @ readBlockFromCache]: Start: blockNum(%d)\n", blockNum );
 
@@ -259,7 +259,7 @@ char* readBlockFromCache( int blockNum )
 	return data;
 }
 
-int writeBlockToCache( int blockNum, char *data )
+int writeBlock( int blockNum, char *data )
 {
 	TracePrintf( 100, "[Testing @ yfs.c @ writeBlockFromCache]: Start: blockNum(%d), data(%s)\n", blockNum, data );
 	struct CacheBlockNode *cacheNode = getBlockFromCache( blockNum );
@@ -717,7 +717,7 @@ int getInodeIndexWithinBlock( int inodeNum )
 }
 
 /* Read and write for block */
-char* readBlock( int blockNum )
+char* readBlockToDisk( int blockNum )
 {
 	TracePrintf( 100, "[Testing @ yfs.c @ readBlock]: Start: blockNum(%d)\n", blockNum );
 	char *buf;
@@ -732,7 +732,7 @@ char* readBlock( int blockNum )
 	return buf;
 }
 
-int writeBlock( int blockNum, char *buf )
+int writeBlockToDisk( int blockNum, char *buf )
 {
 	TracePrintf( 100, "[Testing @ yfs.c @ writeBlock]: Start: blockNum(%d), buf(%s)\n", blockNum, buf );
 	int writeBlockStatus = WriteSector( blockNum, buf );
@@ -2012,48 +2012,8 @@ int main( int argc, char **argv )
 
 			TracePrintf( 500, "Sender: %d\n", sender );
 
-			char *buf = readBlockFromCache( 1 );
-			buf = readBlockFromCache( 2 );
-			buf = readBlockFromCache( 3 );
-			buf = readBlockFromCache( 4 );
-			buf = readBlockFromCache( 33 );
-			buf = readBlockFromCache( 65 );
-			buf = readBlockFromCache( 97 );
-			buf = readBlockFromCache( 5 );
-			buf = readBlockFromCache( 6 );
-			buf = readBlockFromCache( 7 );
-			buf = readBlockFromCache( 8 );
-			buf = readBlockFromCache( 9 );
-			buf = readBlockFromCache( 10 );
-			buf = readBlockFromCache( 11 );
-			buf = readBlockFromCache( 12 );
-			buf = readBlockFromCache( 13 );
-			buf = readBlockFromCache( 1 );
-			buf = readBlockFromCache( 14 );
-			buf = readBlockFromCache( 15 );
-			buf = readBlockFromCache( 16 );
-			buf = readBlockFromCache( 17 );
-			buf = readBlockFromCache( 18 );
-			buf = readBlockFromCache( 19 );
-			buf = readBlockFromCache( 20 );
-			buf = readBlockFromCache( 21 );
-			buf = readBlockFromCache( 22 );
-			buf = readBlockFromCache( 23 );
-			buf = readBlockFromCache( 2 );
-			buf = readBlockFromCache( 24 );
-			buf = readBlockFromCache( 25 );
-			buf = readBlockFromCache( 26 );
-			buf = readBlockFromCache( 27 );
-			buf = readBlockFromCache( 28 );
-			buf = readBlockFromCache( 29 );
-			buf = readBlockFromCache( 30 );
-			buf = readBlockFromCache( 31 );
-			buf = readBlockFromCache( 322 );
-			writeBlockToCache( 1, buf );
-			writeBlockToCache( 3, buf );
-			free( buf );
-//			addressMessage( sender, msg );
-//			Reply( msg, sender );
+			addressMessage( sender, msg );
+			Reply( msg, sender );
 			free( msg );
 		}
 	}
