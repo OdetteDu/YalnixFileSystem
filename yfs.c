@@ -1812,9 +1812,32 @@ struct Stat *getFileStat( int curDir, char *pathname, int pathNameLen )
 
 int sync()
 {
-
-	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
-	return 0;
+	int status = 0;
+	struct CacheBlockNode *current = blockLRUHead;
+	if(current != NULL)
+	{
+		while((current -> LRUNext) != blockLRUHead)
+		{
+			if((current -> isDirty) == 1)
+			{
+				char *data = malloc(sizeof(char) * BLOCKSIZE);
+				memcpy(data, current -> data, BLOCKSIZE);
+				status = writeBlockToDisk(current -> blockNum, data);
+				TracePrintf( 0, "[Testing @ yfs.c @ Sync] Write to Disk: blockNum: %d, Status: %d\n", current -> blockNum, status );
+				current = current -> LRUNext;
+			}
+		}
+		
+		if((current -> isDirty) == 1)
+		{
+			char *data = malloc(sizeof(char) * BLOCKSIZE);
+			memcpy(data, current -> data, BLOCKSIZE);
+			status = writeBlockToDisk(current -> blockNum, data);
+			TracePrintf( 0, "[Testing @ yfs.c @ Sync] Write to Disk: blockNum: %d, Status: %d\n", current -> blockNum, status );
+		}
+	}
+	TracePrintf( 0, "[Testing @ yfs.c @ Sync] Status: %d\n", status );
+	return status;
 //SYNC THE CACHE
 }
 /* End of yfs server calls */
@@ -1934,7 +1957,6 @@ void addressMessage( int pid, struct Message *msg )
 			symLink( curDir, pathname, len, buf, size );
 			break;
 		case READ:
-			//TODO: READ
 			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Message READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode, currentPos, size, buf );
 			msg->size = readFile( inode, &currentPos, buf, size );
 			msg->len = currentPos;
@@ -1945,20 +1967,18 @@ void addressMessage( int pid, struct Message *msg )
 			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Reply READ: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode, currentPos, size, buf );
 			break;
 		case WRITE:
-			//TODO: WRITE
 			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Message WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode, currentPos, size, buf );
 			msg->size = writeFile( inode, &currentPos, buf, size );
 			msg->len = currentPos;
 			TracePrintf( 200, "[Testing @ yfs.c @ addressMessage]: Reply WRITE: type(%d), inode(%d), pos(%d), size(%d), buf(%s)\n", type, inode, currentPos, size, buf );
 			break;
 		case SEEK:
-			//TODO: SEEK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SEEK: type(%d), inode(%d)\n", type, inode );
 			msg->size = seek( inode );
 			break;
 		case SYNC:
-			//TODO: SYNC
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SYNC: type(%d)\n", type );
+			msg->size=sync();
 			break;
 		case SHUTDOWN:
 			//TODO: SHUTDOWN
