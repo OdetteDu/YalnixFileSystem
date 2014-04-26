@@ -49,7 +49,7 @@ struct CacheINode
 {
 	int inodeNum;
 	int isDirty;
-	struct inode *data;
+	struct inode data;
 	struct CacheINode *HashPrev;
 	struct CacheINode *HashNext;
 	struct CacheINode *LRUPrev;
@@ -2119,7 +2119,33 @@ int sync()
 		}
 	}
 	TracePrintf( 0, "[Testing @ yfs.c @ Sync] Status: %d\n", status );
+
+	struct CacheINode *currentInode = inodeLRUHead;
+	if( currentInode != NULL )
+	{
+		while( (currentInode->LRUNext) != inodeLRUHead )
+		{
+			if( (currentInode->isDirty) == 1 )
+			{
+				struct inode *data = malloc( sizeof(struct inode) );
+				memcpy( data, currentInode->data, sizeof(struct inode) );
+				writeInodeToDisk( currentInode->inodeNum, data );
+				TracePrintf( 0, "[Testing @ yfs.c @ Sync] Write to Disk: inodeNum: %d, Status: %d\n", currentInode->inodeNum, status );
+				currentInode = currentInode->LRUNext;
+			}
+		}
+
+		if( (currentInode->isDirty) == 1 )
+		{
+			struct inode *data = malloc( sizeof(struct inode) );
+			memcpy( data, currentInode->data, sizeof(struct inode) );
+			writeInodeToDisk( currentInode->inodeNum, data );
+			TracePrintf( 0, "[Testing @ yfs.c @ Sync] Write to Disk: inodeNum: %d, Status: %d\n", currentInode->inodeNum, status );
+		}
+	}
+	TracePrintf( 0, "[Testing @ yfs.c @ Sync] Status: %d\n", status );
 	return status;
+	return 0;
 //SYNC THE CACHE
 }
 /* End of yfs server calls */
