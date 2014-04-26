@@ -2106,8 +2106,9 @@ int sync()
 				memcpy( data, current->data, BLOCKSIZE );
 				status = writeBlockToDisk( current->blockNum, data );
 				TracePrintf( 0, "[Testing @ yfs.c @ Sync] Write to Disk: blockNum: %d, Status: %d\n", current->blockNum, status );
-				current = current->LRUNext;
 			}
+				current = current->LRUNext;
+				TracePrintf( 0, "[Testing @ yfs.c @ Sync]: loop\n" );
 		}
 
 		if( (current->isDirty) == 1 )
@@ -2128,17 +2129,17 @@ int sync()
 			if( (currentInode->isDirty) == 1 )
 			{
 				struct inode *data = malloc( sizeof(struct inode) );
-				memcpy( data, currentInode->data, sizeof(struct inode) );
+				memcpy( data, &(currentInode->data), sizeof(struct inode) );
 				writeInodeToDisk( currentInode->inodeNum, data );
 				TracePrintf( 0, "[Testing @ yfs.c @ Sync] Write to Disk: inodeNum: %d, Status: %d\n", currentInode->inodeNum, status );
-				currentInode = currentInode->LRUNext;
 			}
+				currentInode = currentInode->LRUNext;
 		}
 
 		if( (currentInode->isDirty) == 1 )
 		{
 			struct inode *data = malloc( sizeof(struct inode) );
-			memcpy( data, currentInode->data, sizeof(struct inode) );
+			memcpy( data, &(currentInode->data), sizeof(struct inode) );
 			writeInodeToDisk( currentInode->inodeNum, data );
 			TracePrintf( 0, "[Testing @ yfs.c @ Sync] Write to Disk: inodeNum: %d, Status: %d\n", currentInode->inodeNum, status );
 		}
