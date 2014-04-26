@@ -739,7 +739,7 @@ char* readBlockToDisk( int blockNum )
 	if( readBlockStatus != 0 )
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ readBlock]: Read block %d unsuccessfully\n", blockNum );
-		return ERROR;
+		return NULL;
 	}
 	//TODO: free buf at any call to readBlock after use
 	return buf;

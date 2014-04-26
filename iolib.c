@@ -512,7 +512,7 @@ extern int MkDir( char *pathname )
 
 
 	if( (( length == 1)&&(pathname[0]=='/' || pathname[0]=='.'))
-			|| ((length == 2)&&(pathname[0] == '.' && pathname[1]=="."))){
+			|| ((length == 2)&&(pathname[0] == '.' && pathname[1]=='.'))){
 		  TracePrintf(0, "[Error @ iolib.c @ MkDir] unable to create invalid pathname (%s)\n", pathname);
 		  return ERROR;
 	}
@@ -641,7 +641,7 @@ extern int Stat( char *pathname, struct Stat *statbuf )
 	msg.messageType = STAT;
 	msg.pathname = pathname;
 	msg.len = strlen( pathname );
-	msg.buf = statbuf;
+	msg.buf = (void*)statbuf;
 
 	int send = Send( (void *) &msg, FILE_SERVER );
 	if( send != 0 )
