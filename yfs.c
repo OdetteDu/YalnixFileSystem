@@ -1029,6 +1029,8 @@ int mkDir(int curDir, char * pathname, int pathNameLen )
 
 int chDir(int curDir,  char* pathname, int pathNameLen )
 {
+	
+
 	//First open the directory
 	int dir = openFileOrDir(curDir, pathname, pathNameLen );
 	if( dir == ERROR )
@@ -1518,10 +1520,22 @@ int symLink(int curDir, char *oldname, int oldnamelen, char* newname, int newnam
 
 }
 
-int readLink( struct Message *msg )
+int readLink( int curDir, char* pathname, char*buf, int len)
 {
 	TracePrintf( 0, "[THIS FUNCTION IS NOT IMPLEMENTED]\n" );
-	return 0;
+	int inode = openFileOrDir(curDir, pathname,len);
+	if(inode== ERROR){
+		  TracePrintf(0, "[Error @ yfs.c @ readLink]: Failed to open (%s)\n", pathname);
+		  return ERROR;
+	}
+	int curPos = 0;
+	int read = readFile(inode, &curPos, buf, MAXPATHNAMELEN);
+	if(read == ERROR){
+		  TracePrintf(0, "[Error @ yfs.c @ readLink]: failed to read into buffer\n");
+		  return ERROR;
+	}
+
+	return read;
 
 }
 
@@ -1604,7 +1618,7 @@ void addressMessage( int pid, struct Message *msg )
 		}
 	}
 
-	if( type == READ || type == WRITE || type == LINK || type == SYMLINK || type == READLINK )
+	if( type == READ || type == WRITE || type == LINK || type == SYMLINK  )
 	{
 		//get buf and size
 		size = msg->size;
@@ -1623,6 +1637,8 @@ void addressMessage( int pid, struct Message *msg )
 		inode = msg->inode;
 		currentPos = msg->len;
 	}
+	
+	
 
 	curDir = msg->inode;//NOTEl DO NOT USE THIS IN READ WIRTE SEEK
 	switch( type )
@@ -1677,6 +1693,8 @@ void addressMessage( int pid, struct Message *msg )
 			//TODO: READLINK
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message READLINK: type(%d), len(%d), pathname(%s), size(%d), buf(%s)\n", type, len,
 					pathname, size, buf );
+			
+			readLink(curDir, pathname, msg->buf,len);
 			break;
 		case LINK:
 			//TODO: LINK

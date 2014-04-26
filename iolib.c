@@ -502,6 +502,7 @@ extern int MkDir( char *pathname )
 	int length;
 	char* pathCopy;
 
+
 	TracePrintf(0, "[Testing @ iolib.c @ MkDir]: Entering create: %s\n", pathname);
 	length = getPathnameLength( pathname );
 	if((length)==ERROR){
@@ -509,6 +510,12 @@ extern int MkDir( char *pathname )
 		return ERROR;
 	}
 
+
+	if( (( length == 1)&&(pathname[0]=='/' || pathname[0]=='.'))
+			|| ((length == 2)&&(pathname[0] == '.' && pathname[1]=="."))){
+		  TracePrintf(0, "[Error @ iolib.c @ MkDir] unable to create invalid pathname (%s)\n", pathname);
+		  return ERROR;
+	}
 	if((pathCopy = malloc((length+1)*sizeof(char)))==NULL){
 		TracePrintf(0, "[Error @ iolib.c @ MkDir]: Failed to malloc for pathname copy\n");  
 		return ERROR;
