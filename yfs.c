@@ -97,6 +97,7 @@ struct CacheBlockNode *getBlockFromCache( int blockNum )
 		//Determine if necessary to free a slot in cache to store a new blockNum
 		if( numCachedBlock >= BLOCK_CACHESIZE )
 		{
+			numCachedBlock--;
 			//The cache is full, need to free a slot to load more 
 			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: the block cache is full, need to free a slot, current: %d, limit: %d\n", numCachedBlock, BLOCK_CACHESIZE );
 
@@ -118,7 +119,7 @@ struct CacheBlockNode *getBlockFromCache( int blockNum )
 			next = tobeRemove -> HashNext;
 			prev -> HashNext = next;
 			next -> HashPrev = prev;
-			if(blockCacheTable[tobeRemoveIndex] == cacheNode)
+			if(blockCacheTable[tobeRemoveIndex] == tobeRemove)
 			{
 				TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: HashHead == cacheNode\n"); 
 				if(tobeRemove == prev && tobeRemove == next)
@@ -154,6 +155,7 @@ struct CacheBlockNode *getBlockFromCache( int blockNum )
 		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: New CacheNode: blockNum(%d), isDirty(%d), data(%s)\n", cacheNode->blockNum, cacheNode->isDirty, cacheNode->data );
 		free( data );
 
+		numCachedBlock ++;
 		//Put in LRU
 		if( blockLRUHead == NULL )
 		{
@@ -2017,6 +2019,36 @@ int main( int argc, char **argv )
 			buf = readBlockFromCache( 33 );
 			buf = readBlockFromCache( 65 );
 			buf = readBlockFromCache( 97 );
+			buf = readBlockFromCache( 5 );
+			buf = readBlockFromCache( 6 );
+			buf = readBlockFromCache( 7 );
+			buf = readBlockFromCache( 8 );
+			buf = readBlockFromCache( 9 );
+			buf = readBlockFromCache( 10 );
+			buf = readBlockFromCache( 11 );
+			buf = readBlockFromCache( 12 );
+			buf = readBlockFromCache( 13 );
+			buf = readBlockFromCache( 1 );
+			buf = readBlockFromCache( 14 );
+			buf = readBlockFromCache( 15 );
+			buf = readBlockFromCache( 16 );
+			buf = readBlockFromCache( 17 );
+			buf = readBlockFromCache( 18 );
+			buf = readBlockFromCache( 19 );
+			buf = readBlockFromCache( 20 );
+			buf = readBlockFromCache( 21 );
+			buf = readBlockFromCache( 22 );
+			buf = readBlockFromCache( 23 );
+			buf = readBlockFromCache( 2 );
+			buf = readBlockFromCache( 24 );
+			buf = readBlockFromCache( 25 );
+			buf = readBlockFromCache( 26 );
+			buf = readBlockFromCache( 27 );
+			buf = readBlockFromCache( 28 );
+			buf = readBlockFromCache( 29 );
+			buf = readBlockFromCache( 30 );
+			buf = readBlockFromCache( 31 );
+			buf = readBlockFromCache( 322 );
 			writeBlockToCache( 1, buf );
 			writeBlockToCache( 3, buf );
 			free( buf );
