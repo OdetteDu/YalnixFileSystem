@@ -51,6 +51,7 @@ void insertIntoLinkedIntList( LinkedIntList *node, LinkedIntList **head, LinkedI
 LinkedIntList* get( int index, LinkedIntList *head );
 void printLinkedList( int level, char *where, LinkedIntList* head );
 
+int symLink( int curDir, char *oldname, int oldnamelen, char* newname, int newnamelen );
 //for inode and block
 int getFreeInode();
 
@@ -968,6 +969,10 @@ int readDirectory( int inodeNum, char *filename, int fileNameLen )
 	TracePrintf( 300, "[Testing @ yfs.c @ readDirectory]: we want to find file(%s), length(%d)\n", filename, fileNameLen );
 	TracePrintf( 350, "[Testing @ yfs.c @ readDirectory]: %d: inode(type: %d, nlink: %d, size: %d, direct: %d, indirect: %d)\n", inodeNum, inode->type, inode->nlink, inode->size, inode->direct[0], inode->indirect );
 	printInode( 400, inodeNum, "readDirectory", inode );
+
+	if(inode->type == INODE_SYMLINK){
+
+	}
 	int *usedBlocks = malloc( sizeof(int) );		//remember to free this thing somewhere later
 	//need to check if get used blocks successfully, the inode may be a free inode
 	int usedBlocksCount = getUsedBlocks( inode, &usedBlocks );
@@ -1600,7 +1605,7 @@ int link( int curDir, char *oldname, int oldnamelen, char* newname, int newnamel
 	{
 		TracePrintf( 0, "[Error @ yfs.c @ link]: Cannot find oldpathname:(%s)\n", oldname );
 		free( fileName );
-		//symLink(oldname, oldnamelen, newname, newnamelen);
+		symLink(curDir,oldname, oldnamelen, newname, newnamelen);
 		return ERROR;
 	}
 
@@ -1995,6 +2000,7 @@ void addressMessage( int pid, struct Message *msg )
 		case SHUTDOWN:
 			//TODO: SHUTDOWN
 			TracePrintf( 500, "[Testing @ yfs.c @ addressMessage]: Message SHUTDOWN: type(%d)\n", type );
+			sync();
 			TtyWrite( 0, "YFS shutting down now", 22 );
 			printf( "YFS shutting down now" );
 			Exit( 0 );

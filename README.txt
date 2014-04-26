@@ -1,28 +1,30 @@
-By Yang Du, Bing Xue
+COMP421 Lab3 YalnixFileSystem
 
-**************************
+by Yang Du (yd15), Bing Xue (bx3)
 
-Update:
+1. Organization
 
-TODO:
+   global.h : contains all the global variables, struct and type defitions and
+   util function headers
 
-1. Need to pass working directory of user in msg
-2. Need to add linking info in msg
-3. Need to chagen gotoDirectory to receive working directory as arguement for
-relative path 
-4. Need to free all Inode read from readInode ####
-5. Need to update nlink in mkDir
+   yfs.c : contains the YFS server code 
 
-6. Need to link chDir back to user
+   iolib.c: contains the User library code
 
-7. fileName is not freed in all cases
-***************************
+2. Functionality
+   
+   #Create, Open, Close fully functional
+   #MkDir, ChDir, RmDir fully functional
+   #Read, Write fully functional
+   #Link, SymLink, ReadLink fully functional
+   #Unlink seem to have bug in dealing with type INODE_SYMLINK
 
-TODO:
-    1. need to change gotoDirectory to return filename with check for existing
-	directory, also need to distinguish the trailing '/' in path name for
-	mkdir.
-	
-	2. Should keep a list of children in the parent and their working
-	directory <--- currently we only host one common working directory, we
-	need to store separate working direcotries for all user programs
+
+3. Notes
+   
+   Symlink traversal does not have limited recursion depth, we rely on
+   checking the length of the pathname given before we proceed to symlink
+   traversal.
+
+   Link does not return error on invalid oldpathname but create a symlink
+   for it.
