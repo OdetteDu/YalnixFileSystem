@@ -921,7 +921,10 @@ int openFileOrDir(int curDir, char *pathname, int pathNameLen )
 			fileName );
 	if(fileInodeNum == ERROR){
 		  TracePrintf(0, "[Testing @ yfs.c openFileorDir] did not find the file/dir (%s) \n", pathname);
+		  return ERROR;
 	}
+	
+
 	free( fileName );
 	return fileInodeNum;
 }
