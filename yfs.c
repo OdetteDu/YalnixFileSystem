@@ -32,6 +32,18 @@ struct CacheBlockNode *blockLRUHead = NULL;
 
 char* readBlock( int );
 
+void printDoubleLinkedList( struct CacheBlockNode *head)
+{
+	struct CacheBlockNode *current = head;
+
+	while((current -> LRUNext) != head)
+	{
+		TracePrintf(100, "Testing @ yfs.c @ printDoubleLinkedList]: Print: %d, prev(%d), next(%d)\n", current -> blockNum, (current -> LRUPrev)->blockNum, (current -> LRUNext) -> blockNum);    
+		current = current -> LRUNext;
+	}
+	TracePrintf(100, "Testing @ yfs.c @ printDoubleLinkedList]: Print: %d, prev(%d), next(%d)\n", current -> blockNum, (current -> LRUPrev)->blockNum, (current -> LRUNext) -> blockNum);    
+}
+
 int HashFunc( int num )
 {
 	//Perform the hash Function
@@ -88,7 +100,7 @@ struct CacheBlockNode *getBlockFromCache( int blockNum )
 			blockLRUHead = cacheNode;
 			blockLRUHead->LRUPrev = cacheNode;
 			blockLRUHead->LRUNext = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
 		}
 		else
 		{
@@ -98,31 +110,77 @@ struct CacheBlockNode *getBlockFromCache( int blockNum )
 			cacheNode->LRUPrev = tail;
 			cacheNode->LRUNext = blockLRUHead;
 			blockLRUHead->LRUPrev = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, tail->blockNum, (tail->LRUPrev)->blockNum, (tail->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, tail->blockNum, (tail->LRUPrev)->blockNum, (tail->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
 		}
 		//Put in Hash
 		if( blockCacheTable[index] == NULL )
 		{
 			//insert the first node in the double linked list, head.prev = head
 			blockCacheTable[index] = cacheNode;
-			blockCacheTable[index]->LRUPrev = cacheNode;
-			blockCacheTable[index]->LRUNext = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockCacheTable[index]->blockNum, (blockCacheTable[index]->LRUPrev)->blockNum, (blockCacheTable[index]->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+			blockCacheTable[index]->HashPrev = cacheNode;
+			blockCacheTable[index]->HashNext = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Hash(%d): Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", index, blockCacheTable[index]->blockNum, ( blockCacheTable[index] -> HashPrev )->blockNum, (blockCacheTable[index]->HashNext)->blockNum, cacheNode->blockNum, (cacheNode->HashPrev)->blockNum, (cacheNode->HashNext)->blockNum );
 		}
 		else
 		{
 			//insert node at the end of the double linked list
-			struct CacheBlockNode *tail = blockCacheTable[index]->LRUPrev;
-			tail->LRUNext = cacheNode;
-			cacheNode->LRUPrev = tail;
-			cacheNode->LRUNext = blockCacheTable[index];
-			blockCacheTable[index]->LRUPrev = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockCacheTable[index]->blockNum, (blockCacheTable[index]->LRUPrev)->blockNum, (blockCacheTable[index]->LRUNext)->blockNum, tail->blockNum, (tail->LRUPrev)->blockNum, (tail->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+			struct CacheBlockNode *tail = blockCacheTable[index]->HashPrev;
+			tail->HashNext = cacheNode;
+			cacheNode->HashPrev = tail;
+			cacheNode->HashNext = blockCacheTable[index];
+			blockCacheTable[index]->HashPrev = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Hash(%d): Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", index, blockCacheTable[index]->blockNum, (blockCacheTable[index]->HashPrev)->blockNum, (blockCacheTable[index]->HashNext)->blockNum, tail->blockNum, (tail->HashPrev)->blockNum, (tail->HashNext)->blockNum, cacheNode->blockNum, (cacheNode->HashPrev)->blockNum, (cacheNode->HashNext)->blockNum );
 		}
 	}
 	else
 	{
 		TracePrintf( 100, "[Testing @ yfs.c @ readBlockFromCache]: The block(%d) is in cache, need to move it in LRU\n", blockNum );
+
+		//take it out of the LRU
+		struct CacheBlockNode *prev = cacheNode -> LRUPrev;
+		struct CacheBlockNode *next = cacheNode -> LRUNext;
+		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU Before Remove: Head: %d, prev(%d), next(%d), Current: %d, prev(%d), next(%d), Prev: %d, prev(%d), next(%d), Next: %d, prev(%d), next(%d)\n", blockLRUHead -> blockNum, (blockLRUHead -> LRUPrev) -> blockNum, (blockLRUHead -> LRUNext) -> blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum,prev->blockNum, (prev->LRUPrev)->blockNum, (prev->LRUNext)->blockNum,next->blockNum, (next->LRUPrev)->blockNum, (next->LRUNext)->blockNum );
+		printDoubleLinkedList(blockLRUHead);
+		prev -> LRUNext = next;
+		next -> LRUPrev = prev;
+		if(blockLRUHead == cacheNode)
+		{
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: blockLRUHead == cacheNode\n"); 
+			if(blockLRUHead == prev && blockLRUHead == next)
+			{
+				TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: blockLRUHead is the last cacheNode\n"); 
+				blockLRUHead = NULL; 
+			}
+			else
+			{
+				TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: blockLRUHead is not the last cacheNode\n"); 
+				blockLRUHead = next;
+			}
+		}
+		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU After Remove: Head: %d, prev(%d), next(%d), Current: %d, prev(%d), next(%d), Prev: %d, prev(%d), next(%d), Next: %d, prev(%d), next(%d)\n", blockLRUHead -> blockNum, (blockLRUHead -> LRUPrev) -> blockNum, (blockLRUHead -> LRUNext) -> blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum,prev->blockNum, (prev->LRUPrev)->blockNum, (prev->LRUNext)->blockNum,next->blockNum, (next->LRUPrev)->blockNum, (next->LRUNext)->blockNum );
+		printDoubleLinkedList(blockLRUHead);
+
+		//put it at the end of LRU
+		if( blockLRUHead == NULL )
+		{
+			//insert the first node in the double linked list, head.prev = head
+			blockLRUHead = cacheNode;
+			blockLRUHead->LRUPrev = cacheNode;
+			blockLRUHead->LRUNext = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+			printDoubleLinkedList(blockLRUHead);
+		}
+		else
+		{
+			//insert node at the end of the double linked list
+			struct CacheBlockNode *tail = blockLRUHead->LRUPrev;
+			tail->LRUNext = cacheNode;
+			cacheNode->LRUPrev = tail;
+			cacheNode->LRUNext = blockLRUHead;
+			blockLRUHead->LRUPrev = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, tail->blockNum, (tail->LRUPrev)->blockNum, (tail->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+			printDoubleLinkedList(blockLRUHead);
+		}
 	}
 
 	return cacheNode;
@@ -142,6 +200,7 @@ char* readBlockFromCache( int blockNum )
 int writeBlockToCache( int blockNum, char *data )
 {
 	TracePrintf( 100, "[Testing @ yfs.c @ writeBlockFromCache]: Start: blockNum(%d), data(%s)\n", blockNum, data );
+	struct CacheBlockNode *cacheNode = getBlockFromCache( blockNum );
 	return 0;
 }
 
@@ -1894,6 +1953,7 @@ int main( int argc, char **argv )
 			buf = readBlockFromCache( 3 );
 			buf = readBlockFromCache( 4 );
 			writeBlockToCache( 1, buf );
+			writeBlockToCache( 3, buf );
 			free( buf );
 //			addressMessage( sender, msg );
 //			Reply( msg, sender );
