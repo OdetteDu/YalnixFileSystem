@@ -31,6 +31,7 @@ struct CacheBlockNode *blockCacheTable[BLOCK_CACHESIZE];
 struct CacheBlockNode *blockLRUHead = NULL;
 
 char* readBlock( int );
+int writeBlock( int, char *);
 
 void printLRUBlockCache()
 {
@@ -83,6 +84,10 @@ struct CacheBlockNode *getBlockFromCache( int blockNum )
 	{
 		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromHash]: Looking for blockNum(%d), current blockNum(%d)\n", blockNum, cacheNode->blockNum );
 		cacheNode = cacheNode->HashNext;
+		if(cacheNode == blockCacheTable[index])
+		{
+			cacheNode = NULL;
+		}
 	}
 
 	if( cacheNode == NULL )
@@ -130,7 +135,13 @@ struct CacheBlockNode *getBlockFromCache( int blockNum )
 			printHashBlockCache();
 
 			//if it is dirty, write to disk, then free the node
-
+			if((tobeRemove -> isDirty) == 1)
+			{
+				char *data = malloc(sizeof(char) * BLOCKSIZE);
+				memcpy(data, tobeRemove -> data, BLOCKSIZE);
+				writeBlock(tobeRemove -> blockNum, data);
+			}
+			free(tobeRemove);
 		}
 
 		//Load the data inoto cache
@@ -250,6 +261,8 @@ int writeBlockToCache( int blockNum, char *data )
 {
 	TracePrintf( 100, "[Testing @ yfs.c @ writeBlockFromCache]: Start: blockNum(%d), data(%s)\n", blockNum, data );
 	struct CacheBlockNode *cacheNode = getBlockFromCache( blockNum );
+	memcpy(cacheNode -> data, data, BLOCKSIZE);
+	cacheNode -> isDirty = 1;
 	return 0;
 }
 
@@ -2001,6 +2014,9 @@ int main( int argc, char **argv )
 			buf = readBlockFromCache( 2 );
 			buf = readBlockFromCache( 3 );
 			buf = readBlockFromCache( 4 );
+			buf = readBlockFromCache( 33 );
+			buf = readBlockFromCache( 65 );
+			buf = readBlockFromCache( 97 );
 			writeBlockToCache( 1, buf );
 			writeBlockToCache( 3, buf );
 			free( buf );
