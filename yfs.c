@@ -620,6 +620,247 @@ int writeBlockToDisk( int blockNum, char *buf )
 }
 
 
+struct CacheBlockNode *getBlockFromCache( int blockNum )
+{
+	TracePrintf( 100, "[Testing @ yfs.c @ getInodeFromCache]: Start: blockNum(%d)\n", blockNum );
+
+	int index = HashFuncBlock( blockNum );
+
+	struct CacheBlockNode *cacheNode = blockCacheTable[index];
+	while( cacheNode != NULL && cacheNode->blockNum != blockNum )
+	{
+		TracePrintf( 100, "[Testing @ yfs.c @ getInodeFromCache]: Looking for blockNum(%d), current blockNum(%d)\n", blockNum, cacheNode->blockNum );
+		cacheNode = cacheNode->HashNext;
+		if( cacheNode == blockCacheTable[index] )
+		{
+			cacheNode = NULL;
+		}
+	}
+
+	if( cacheNode == NULL )
+	{
+		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: The block(%d) is not in cache yet, need to load from the disk\n", blockNum );
+
+//Determine if necessary to free a slot in cache to store a new blockNum
+		if( numCachedBlock >= BLOCK_CACHESIZE )
+		{
+			numCachedBlock--;
+//The cache is full, need to free a slot to load more
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: the block cache is full, need to free a slot, current: %d, limit: %d\n", numCachedBlock, BLOCK_CACHESIZE );
+
+//Get and remove the Head in the LRU
+			struct CacheBlockNode *tobeRemove = blockLRUHead;
+			struct CacheBlockNode *prev = blockLRUHead->LRUPrev;
+			struct CacheBlockNode *next = blockLRUHead->LRUNext;
+			prev->LRUNext = next;
+			next->LRUPrev = prev;
+			blockLRUHead = next;
+
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU After Remove: Head: %d, prev(%d), next(%d), Current: %d, prev(%d), next(%d), Prev: %d, prev(%d), next(%d), Next: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, tobeRemove->blockNum, (tobeRemove->LRUPrev)->blockNum, (tobeRemove->LRUNext)->blockNum, prev->blockNum, (prev->LRUPrev)->blockNum, (prev->LRUNext)->blockNum, next->blockNum, (next->LRUPrev)->blockNum, (next->LRUNext)->blockNum );
+
+			printLRUBlockCache();
+
+//remove it from Hash
+			int tobeRemoveIndex = HashFuncBlock( tobeRemove->blockNum );
+			prev = tobeRemove->HashPrev;
+			next = tobeRemove->HashNext;
+			prev->HashNext = next;
+			next->HashPrev = prev;
+			if( blockCacheTable[tobeRemoveIndex] == tobeRemove )
+			{
+				TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: HashHead == cacheNode\n" );
+				if( tobeRemove == prev && tobeRemove == next )
+				{
+					TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: HashHead is the last cacheNode\n" );
+					blockCacheTable[tobeRemoveIndex] = NULL;
+				}
+				else
+				{
+					TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: HashHead is not the last cacheNode\n" );
+					blockCacheTable[tobeRemoveIndex] = next;
+				}
+			}
+			printHashBlockCache();
+
+//if it is dirty, write to disk, then free the node
+			if( (tobeRemove->isDirty) == 1 )
+			{
+				char *data = malloc( sizeof(char) * BLOCKSIZE );
+				memcpy( data, tobeRemove->data, BLOCKSIZE );
+				writeBlockToDisk( tobeRemove->blockNum, data );
+			}
+			free( tobeRemove );
+		}
+
+//Load the data inoto cache
+		char *data = readBlockToDisk( blockNum );
+		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Get Data: blockNum(%d), data(%s)\n", blockNum, data );
+		cacheNode = malloc( sizeof(struct CacheBlockNode) );
+		cacheNode->blockNum = blockNum;
+		cacheNode->isDirty = 0;
+		memcpy( &(cacheNode->data), data, BLOCKSIZE );
+		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: New CacheNode: blockNum(%d), isDirty(%d), data(%s)\n", cacheNode->blockNum, cacheNode->isDirty, cacheNode->data );
+		free( data );
+
+		numCachedBlock++;
+//Put in LRU
+		if( blockLRUHead == NULL )
+		{
+//insert the first node in the double linked list, head.prev = head
+			blockLRUHead = cacheNode;
+			blockLRUHead->LRUPrev = cacheNode;
+			blockLRUHead->LRUNext = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+		}
+		else
+		{
+//insert node at the end of the double linked list
+			struct CacheBlockNode *tail = blockLRUHead->LRUPrev;
+			tail->LRUNext = cacheNode;
+			cacheNode->LRUPrev = tail;
+			cacheNode->LRUNext = blockLRUHead;
+			blockLRUHead->LRUPrev = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, tail->blockNum, (tail->LRUPrev)->blockNum, (tail->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+		}
+//Put in Hash
+		if( blockCacheTable[index] == NULL )
+		{
+//insert the first node in the double linked list, head.prev = head
+			blockCacheTable[index] = cacheNode;
+			blockCacheTable[index]->HashPrev = cacheNode;
+			blockCacheTable[index]->HashNext = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Hash(%d): Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", index, blockCacheTable[index]->blockNum, (blockCacheTable[index]->HashPrev)->blockNum, (blockCacheTable[index]->HashNext)->blockNum, cacheNode->blockNum, (cacheNode->HashPrev)->blockNum, (cacheNode->HashNext)->blockNum );
+		}
+		else
+		{
+//insert node at the end of the double linked list
+			struct CacheBlockNode *tail = blockCacheTable[index]->HashPrev;
+			tail->HashNext = cacheNode;
+			cacheNode->HashPrev = tail;
+			cacheNode->HashNext = blockCacheTable[index];
+			blockCacheTable[index]->HashPrev = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Hash(%d): Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", index, blockCacheTable[index]->blockNum, (blockCacheTable[index]->HashPrev)->blockNum, (blockCacheTable[index]->HashNext)->blockNum, tail->blockNum, (tail->HashPrev)->blockNum, (tail->HashNext)->blockNum, cacheNode->blockNum, (cacheNode->HashPrev)->blockNum, (cacheNode->HashNext)->blockNum );
+		}
+		printHashBlockCache();
+	}
+	else
+	{
+		TracePrintf( 100, "[Testing @ yfs.c @ readBlockFromCache]: The block(%d) is in cache, need to move it in LRU\n", blockNum );
+
+//take it out of the LRU
+		struct CacheBlockNode *prev = cacheNode->LRUPrev;
+		struct CacheBlockNode *next = cacheNode->LRUNext;
+		prev->LRUNext = next;
+		next->LRUPrev = prev;
+		if( blockLRUHead == cacheNode )
+		{
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: blockLRUHead == cacheNode\n" );
+			if( blockLRUHead == prev && blockLRUHead == next )
+			{
+				TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: blockLRUHead is the last cacheNode\n" );
+				blockLRUHead = NULL;
+			}
+			else
+			{
+				TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: blockLRUHead is not the last cacheNode\n" );
+				blockLRUHead = next;
+			}
+		}
+		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU After Remove: Head: %d, prev(%d), next(%d), Current: %d, prev(%d), next(%d), Prev: %d, prev(%d), next(%d), Next: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum, prev->blockNum, (prev->LRUPrev)->blockNum, (prev->LRUNext)->blockNum, next->blockNum, (next->LRUPrev)->blockNum, (next->LRUNext)->blockNum );
+		printLRUBlockCache();
+
+//put it at the end of LRU
+		if( blockLRUHead == NULL )
+		{
+//insert the first node in the double linked list, head.prev = head
+			blockLRUHead = cacheNode;
+			blockLRUHead->LRUPrev = cacheNode;
+			blockLRUHead->LRUNext = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+			printLRUBlockCache();
+		}
+		else
+		{
+//insert node at the end of the double linked list
+			struct CacheBlockNode *tail = blockLRUHead->LRUPrev;
+			tail->LRUNext = cacheNode;
+			cacheNode->LRUPrev = tail;
+			cacheNode->LRUNext = blockLRUHead;
+			blockLRUHead->LRUPrev = cacheNode;
+			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, tail->blockNum, (tail->LRUPrev)->blockNum, (tail->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
+			printLRUBlockCache();
+		}
+	}
+
+	return cacheNode;
+}
+
+char* readBlock( int blockNum )
+{
+	TracePrintf( 100, "[Testing @ yfs.c @ readBlockFromCache]: Start: blockNum(%d)\n", blockNum );
+
+	struct CacheBlockNode *cacheNode = getBlockFromCache( blockNum );
+	char *data = malloc( sizeof(char) * BLOCKSIZE );
+	memcpy( data, cacheNode->data, BLOCKSIZE );
+	TracePrintf( 100, "[Testing @ yfs.c @ readBlockFromCache]: Finish: blockNum(%d), data(%s)\n", blockNum, data );
+	return data;
+}
+
+int writeBlock( int blockNum, char *data )
+{
+	TracePrintf( 100, "[Testing @ yfs.c @ writeBlockFromCache]: Start: blockNum(%d), data(%s)\n", blockNum, data );
+	struct CacheBlockNode *cacheNode = getBlockFromCache( blockNum );
+	memcpy( cacheNode->data, data, BLOCKSIZE );
+	cacheNode->isDirty = 1;
+	return 0;
+}
+
+/* Read and write for inode */
+struct inode* readInodeToDisk( int inodeNum )
+{
+	if( inodeNum == 0 || inodeNum > numInodes )
+	{
+		TracePrintf( 0, "[Error @ yfs.c @readInode]: inodeNum %d is illegal\n", inodeNum );
+		return NULL;
+	}
+	//TODO: need to check is the inode Num is valid, if the inode read is correct, should return NULL if encounter any error
+	int blockNum = getBlockNumInodeIn( inodeNum );
+
+	char *buf = readBlock( blockNum );
+	int inodeIndex = getInodeIndexWithinBlock( inodeNum );
+	TracePrintf( 100, "[Testing @ yfs.c @readInode]: blockNum: %d, inodeIndex: %d, sizeof inode: %d\n", blockNum, inodeIndex, sizeof(struct inode) );
+	//struct inode* inode = malloc(sizeof(struct inode));
+	//TODO: should do some mem copy instead of directly using buf here
+	// THIS WILL CAUSE MEMORY LEAK
+	// NEED TO FIX LATER
+	// malloc inode
+	// free(buf)
+	// memcpy(inode, buf, blocksize - inodeindex);
+
+	struct inode *inode = malloc( sizeof(struct inode) );
+
+	memcpy( inode, (struct inode *) buf + inodeIndex, sizeof(struct inode) );
+//	TracePrintf( 400, "[Testing @ yfs.c @ readInode]: %d: inode(type: %d, nlink: %d, size: %d, direct: %d, indirect: %d)\n", inodeNum, inode->type, inode->nlink, inode->size, inode -> direct[0], inode->indirect );
+	printInode( 400, inodeNum, "readInode inode from memcpy", inode );
+	free( buf );	//TODO: THIS FREE SEEMS UNSAFE!!
+	return inode;
+}
+
+struct inode* writeInodeToDisk( int inodeNum, struct inode *newInode )
+{
+	int blockNum = getBlockNumInodeIn( inodeNum );
+
+	char *buf = readBlock( blockNum );
+	int inodeIndex = getInodeIndexWithinBlock( inodeNum );
+	memcpy( (struct inode *) buf + inodeIndex, newInode, sizeof(struct inode) );
+	struct inode *inode = newInode;
+	TracePrintf(100, "[Testing @ yfs.c  @ writeInode]: inode after write(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink, inode->size, inode->indirect );
+	writeBlock( blockNum, buf );
+//TODO: CHECK MEMROY HERE
+	free( buf );
+	return inode;
+}
+
 struct CacheINode *getInodeFromCache( int inodeNum )
 {
 	TracePrintf( 100, "[Testing @ yfs.c @ getInodeFromCache]: Start: inodeNum(%d)\n", inodeNum );
@@ -795,246 +1036,6 @@ struct CacheINode *getInodeFromCache( int inodeNum )
 	return cacheNode;
 }
 
-char* readBlock( int blockNum )
-{
-	TracePrintf( 100, "[Testing @ yfs.c @ readBlockFromCache]: Start: blockNum(%d)\n", blockNum );
-
-	struct CacheBlockNode *cacheNode = getBlockFromCache( blockNum );
-	char *data = malloc( sizeof(char) * BLOCKSIZE );
-	memcpy( data, cacheNode->data, BLOCKSIZE );
-	TracePrintf( 100, "[Testing @ yfs.c @ readBlockFromCache]: Finish: blockNum(%d), data(%s)\n", blockNum, data );
-	return data;
-}
-
-int writeBlock( int blockNum, char *data )
-{
-	TracePrintf( 100, "[Testing @ yfs.c @ writeBlockFromCache]: Start: blockNum(%d), data(%s)\n", blockNum, data );
-	struct CacheBlockNode *cacheNode = getBlockFromCache( blockNum );
-	memcpy( cacheNode->data, data, BLOCKSIZE );
-	cacheNode->isDirty = 1;
-	return 0;
-}
-
-/* Read and write for inode */
-struct inode* readInodeToDisk( int inodeNum )
-{
-	if( inodeNum == 0 || inodeNum > numInodes )
-	{
-		TracePrintf( 0, "[Error @ yfs.c @readInode]: inodeNum %d is illegal\n", inodeNum );
-		return NULL;
-	}
-	//TODO: need to check is the inode Num is valid, if the inode read is correct, should return NULL if encounter any error
-	int blockNum = getBlockNumInodeIn( inodeNum );
-
-	char *buf = readBlock( blockNum );
-	int inodeIndex = getInodeIndexWithinBlock( inodeNum );
-	TracePrintf( 100, "[Testing @ yfs.c @readInode]: blockNum: %d, inodeIndex: %d, sizeof inode: %d\n", blockNum, inodeIndex, sizeof(struct inode) );
-	//struct inode* inode = malloc(sizeof(struct inode));
-	//TODO: should do some mem copy instead of directly using buf here
-	// THIS WILL CAUSE MEMORY LEAK
-	// NEED TO FIX LATER
-	// malloc inode
-	// free(buf)
-	// memcpy(inode, buf, blocksize - inodeindex);
-
-	struct inode *inode = malloc( sizeof(struct inode) );
-
-	memcpy( inode, (struct inode *) buf + inodeIndex, sizeof(struct inode) );
-//	TracePrintf( 400, "[Testing @ yfs.c @ readInode]: %d: inode(type: %d, nlink: %d, size: %d, direct: %d, indirect: %d)\n", inodeNum, inode->type, inode->nlink, inode->size, inode -> direct[0], inode->indirect );
-	printInode( 400, inodeNum, "readInode inode from memcpy", inode );
-	free( buf );	//TODO: THIS FREE SEEMS UNSAFE!!
-	return inode;
-}
-
-struct inode* writeInodeToDisk( int inodeNum, struct inode *newInode )
-{
-	int blockNum = getBlockNumInodeIn( inodeNum );
-
-	char *buf = readBlock( blockNum );
-	int inodeIndex = getInodeIndexWithinBlock( inodeNum );
-	memcpy( (struct inode *) buf + inodeIndex, newInode, sizeof(struct inode) );
-	struct inode *inode = newInode;
-	TracePrintf(100, "[Testing @ yfs.c  @ writeInode]: inode after write(type: %d, nlink: %d, size: %d, indirect: %d)\n", inode->type, inode->nlink, inode->size, inode->indirect );
-	writeBlock( blockNum, buf );
-//TODO: CHECK MEMROY HERE
-	free( buf );
-	return inode;
-}
-
-struct CacheBlockNode *getBlockFromCache( int blockNum )
-{
-	TracePrintf( 100, "[Testing @ yfs.c @ getInodeFromCache]: Start: blockNum(%d)\n", blockNum );
-
-	int index = HashFuncBlock( blockNum );
-
-	struct CacheBlockNode *cacheNode = blockCacheTable[index];
-	while( cacheNode != NULL && cacheNode->blockNum != blockNum )
-	{
-		TracePrintf( 100, "[Testing @ yfs.c @ getInodeFromCache]: Looking for blockNum(%d), current blockNum(%d)\n", blockNum, cacheNode->blockNum );
-		cacheNode = cacheNode->HashNext;
-		if( cacheNode == blockCacheTable[index] )
-		{
-			cacheNode = NULL;
-		}
-	}
-
-	if( cacheNode == NULL )
-	{
-		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: The block(%d) is not in cache yet, need to load from the disk\n", blockNum );
-
-//Determine if necessary to free a slot in cache to store a new blockNum
-		if( numCachedBlock >= BLOCK_CACHESIZE )
-		{
-			numCachedBlock--;
-//The cache is full, need to free a slot to load more
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: the block cache is full, need to free a slot, current: %d, limit: %d\n", numCachedBlock, BLOCK_CACHESIZE );
-
-//Get and remove the Head in the LRU
-			struct CacheBlockNode *tobeRemove = blockLRUHead;
-			struct CacheBlockNode *prev = blockLRUHead->LRUPrev;
-			struct CacheBlockNode *next = blockLRUHead->LRUNext;
-			prev->LRUNext = next;
-			next->LRUPrev = prev;
-			blockLRUHead = next;
-
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU After Remove: Head: %d, prev(%d), next(%d), Current: %d, prev(%d), next(%d), Prev: %d, prev(%d), next(%d), Next: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, tobeRemove->blockNum, (tobeRemove->LRUPrev)->blockNum, (tobeRemove->LRUNext)->blockNum, prev->blockNum, (prev->LRUPrev)->blockNum, (prev->LRUNext)->blockNum, next->blockNum, (next->LRUPrev)->blockNum, (next->LRUNext)->blockNum );
-
-			printLRUBlockCache();
-
-//remove it from Hash
-			int tobeRemoveIndex = HashFuncBlock( tobeRemove->blockNum );
-			prev = tobeRemove->HashPrev;
-			next = tobeRemove->HashNext;
-			prev->HashNext = next;
-			next->HashPrev = prev;
-			if( blockCacheTable[tobeRemoveIndex] == tobeRemove )
-			{
-				TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: HashHead == cacheNode\n" );
-				if( tobeRemove == prev && tobeRemove == next )
-				{
-					TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: HashHead is the last cacheNode\n" );
-					blockCacheTable[tobeRemoveIndex] = NULL;
-				}
-				else
-				{
-					TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: HashHead is not the last cacheNode\n" );
-					blockCacheTable[tobeRemoveIndex] = next;
-				}
-			}
-			printHashBlockCache();
-
-//if it is dirty, write to disk, then free the node
-			if( (tobeRemove->isDirty) == 1 )
-			{
-				char *data = malloc( sizeof(char) * BLOCKSIZE );
-				memcpy( data, tobeRemove->data, BLOCKSIZE );
-				writeBlockToDisk( tobeRemove->blockNum, data );
-			}
-			free( tobeRemove );
-		}
-
-//Load the data inoto cache
-		char *data = readBlockToDisk( blockNum );
-		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Get Data: blockNum(%d), data(%s)\n", blockNum, data );
-		cacheNode = malloc( sizeof(struct CacheBlockNode) );
-		cacheNode->blockNum = blockNum;
-		cacheNode->isDirty = 0;
-		memcpy( &(cacheNode->data), data, BLOCKSIZE );
-		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: New CacheNode: blockNum(%d), isDirty(%d), data(%s)\n", cacheNode->blockNum, cacheNode->isDirty, cacheNode->data );
-		free( data );
-
-		numCachedBlock++;
-//Put in LRU
-		if( blockLRUHead == NULL )
-		{
-//insert the first node in the double linked list, head.prev = head
-			blockLRUHead = cacheNode;
-			blockLRUHead->LRUPrev = cacheNode;
-			blockLRUHead->LRUNext = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
-		}
-		else
-		{
-//insert node at the end of the double linked list
-			struct CacheBlockNode *tail = blockLRUHead->LRUPrev;
-			tail->LRUNext = cacheNode;
-			cacheNode->LRUPrev = tail;
-			cacheNode->LRUNext = blockLRUHead;
-			blockLRUHead->LRUPrev = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, tail->blockNum, (tail->LRUPrev)->blockNum, (tail->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
-		}
-//Put in Hash
-		if( blockCacheTable[index] == NULL )
-		{
-//insert the first node in the double linked list, head.prev = head
-			blockCacheTable[index] = cacheNode;
-			blockCacheTable[index]->HashPrev = cacheNode;
-			blockCacheTable[index]->HashNext = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Hash(%d): Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", index, blockCacheTable[index]->blockNum, (blockCacheTable[index]->HashPrev)->blockNum, (blockCacheTable[index]->HashNext)->blockNum, cacheNode->blockNum, (cacheNode->HashPrev)->blockNum, (cacheNode->HashNext)->blockNum );
-		}
-		else
-		{
-//insert node at the end of the double linked list
-			struct CacheBlockNode *tail = blockCacheTable[index]->HashPrev;
-			tail->HashNext = cacheNode;
-			cacheNode->HashPrev = tail;
-			cacheNode->HashNext = blockCacheTable[index];
-			blockCacheTable[index]->HashPrev = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: Hash(%d): Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", index, blockCacheTable[index]->blockNum, (blockCacheTable[index]->HashPrev)->blockNum, (blockCacheTable[index]->HashNext)->blockNum, tail->blockNum, (tail->HashPrev)->blockNum, (tail->HashNext)->blockNum, cacheNode->blockNum, (cacheNode->HashPrev)->blockNum, (cacheNode->HashNext)->blockNum );
-		}
-		printHashBlockCache();
-	}
-	else
-	{
-		TracePrintf( 100, "[Testing @ yfs.c @ readBlockFromCache]: The block(%d) is in cache, need to move it in LRU\n", blockNum );
-
-//take it out of the LRU
-		struct CacheBlockNode *prev = cacheNode->LRUPrev;
-		struct CacheBlockNode *next = cacheNode->LRUNext;
-		prev->LRUNext = next;
-		next->LRUPrev = prev;
-		if( blockLRUHead == cacheNode )
-		{
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: blockLRUHead == cacheNode\n" );
-			if( blockLRUHead == prev && blockLRUHead == next )
-			{
-				TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: blockLRUHead is the last cacheNode\n" );
-				blockLRUHead = NULL;
-			}
-			else
-			{
-				TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: blockLRUHead is not the last cacheNode\n" );
-				blockLRUHead = next;
-			}
-		}
-		TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU After Remove: Head: %d, prev(%d), next(%d), Current: %d, prev(%d), next(%d), Prev: %d, prev(%d), next(%d), Next: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum, prev->blockNum, (prev->LRUPrev)->blockNum, (prev->LRUNext)->blockNum, next->blockNum, (next->LRUPrev)->blockNum, (next->LRUNext)->blockNum );
-		printLRUBlockCache();
-
-//put it at the end of LRU
-		if( blockLRUHead == NULL )
-		{
-//insert the first node in the double linked list, head.prev = head
-			blockLRUHead = cacheNode;
-			blockLRUHead->LRUPrev = cacheNode;
-			blockLRUHead->LRUNext = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
-			printLRUBlockCache();
-		}
-		else
-		{
-//insert node at the end of the double linked list
-			struct CacheBlockNode *tail = blockLRUHead->LRUPrev;
-			tail->LRUNext = cacheNode;
-			cacheNode->LRUPrev = tail;
-			cacheNode->LRUNext = blockLRUHead;
-			blockLRUHead->LRUPrev = cacheNode;
-			TracePrintf( 100, "[Testing @ yfs.c @ getBlockFromCache]: LRU: Head: %d, prev(%d), next(%d), Tail: %d, prev(%d), next(%d), New: %d, prev(%d), next(%d)\n", blockLRUHead->blockNum, (blockLRUHead->LRUPrev)->blockNum, (blockLRUHead->LRUNext)->blockNum, tail->blockNum, (tail->LRUPrev)->blockNum, (tail->LRUNext)->blockNum, cacheNode->blockNum, (cacheNode->LRUPrev)->blockNum, (cacheNode->LRUNext)->blockNum );
-			printLRUBlockCache();
-		}
-	}
-
-	return cacheNode;
-}
 
 struct inode* readInode( int inodeNum )
 {
@@ -2130,7 +2131,7 @@ int sync()
 			{
 				struct inode *data = malloc( sizeof(struct inode) );
 				memcpy( data, currentInode->data, sizeof(struct inode) );
-				status = writeInodeToDisk( currentInode->inodeNum, data );
+				writeInodeToDisk( currentInode->inodeNum, data );
 				TracePrintf( 0, "[Testing @ yfs.c @ Sync] Write to Disk: inodeNum: %d, Status: %d\n", currentInode->inodeNum, status );
 				currentInode = currentInode->LRUNext;
 			}
@@ -2140,7 +2141,7 @@ int sync()
 		{
 				struct inode *data = malloc( sizeof(struct inode) );
 				memcpy( data, currentInode->data, sizeof(struct inode) );
-				status = writeInodeToDisk( currentInode->inodeNum, data );
+				writeInodeToDisk( currentInode->inodeNum, data );
 				TracePrintf( 0, "[Testing @ yfs.c @ Sync] Write to Disk: inodeNum: %d, Status: %d\n", currentInode->inodeNum, status );
 		}
 	}
